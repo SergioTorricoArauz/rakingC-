@@ -154,10 +154,7 @@ namespace RankingCyY.Controllers
     {
         ("Cliente Plata", 100),
         ("Cliente Oro", 200),
-        ("Cliente Premium", 300),
-        ("Temporada Top 1", 200),
-        ("Temporada Top 2", 150),
-        ("Temporada Top 3", 100),
+        ("Cliente Premium", 300)
     };
 
             var insigniasOtorgadas = new List<string>();

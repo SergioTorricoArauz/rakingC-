@@ -11,5 +11,6 @@
         public DbSet<Temporadas> Temporadas { get; set; }
         public DbSet<Insignias> Insignias { get; set; }
         public DbSet<ClienteInsignia> ClienteInsignias { get; set; }
+        public DbSet<Puntajes> Puntajes { get; set; }
     }
 }
