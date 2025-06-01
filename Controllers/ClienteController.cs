@@ -2,8 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RankingCyY.Data;
-using RankingCyY.Data.dto;
 using RankingCyY.Models;
+using RankingCyY.Models.dto;
 using System.Net.Mail;
 
 namespace RankingCyY.Controllers
@@ -105,7 +105,7 @@ namespace RankingCyY.Controllers
             }
             _context.Clientes.Remove(cliente);
             await _context.SaveChangesAsync();
-            return NoContent();
+            return NoContent(); 
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace RankingCyY.Data.dto
+﻿namespace RankingCyY.Models.dto
 {
     public class ClienteResponseDto
     {

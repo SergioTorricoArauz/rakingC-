@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 
-namespace RankingCyY.Data.dto
+namespace RankingCyY.Models.dto
 {
 
     public class ClientePostDto

@@ -8,5 +8,6 @@
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<Cliente> Clientes { get; set; }
+        public DbSet<Temporadas> Temporadas { get; set; }
     }
 }
