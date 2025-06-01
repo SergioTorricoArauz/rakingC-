@@ -19,5 +19,8 @@ namespace RankingCyY.Models
         public DateTime FechaRegistro { get; set; }
         [Column("puntos_generales")]
         public int PuntosGenerales { get; set; }
+
+        // Relación muchos a muchos con Insignias
+        public ICollection<ClienteInsignia> ClienteInsignias { get; set; }
     }
 }

@@ -59,6 +59,33 @@ namespace RankingCyY.Controllers
             return Ok(clienteDto);
         }
 
+        // Obtener insignias de un cliente
+        [HttpGet("{clienteId}/insignias")]
+        public async Task<ActionResult<IEnumerable<InsigniaResponseDto>>> GetInsigniasCliente(int clienteId)
+        {
+            var clienteInsignias = await _context.ClienteInsignias
+                .Where(ci => ci.ClienteId == clienteId)
+                .Include(ci => ci.Insignia)
+                .ToListAsync();
+
+            if (clienteInsignias == null || !clienteInsignias.Any())
+            {
+                return NotFound("El cliente no tiene insignias.");
+            }
+
+            var insigniasDto = clienteInsignias.Select(ci => new InsigniaResponseDto
+            {
+                Id = ci.Insignia.Id,
+                Nombre = ci.Insignia.Nombre,
+                Requisitos = ci.Insignia.Requisitos,
+                FechaInicio = ci.Insignia.FechaInicio,
+                FechaFin = ci.Insignia.FechaFin
+            }).ToList();
+
+            return Ok(insigniasDto);
+        }
+
+
         // Crear un nuevo cliente
         [HttpPost("register")]
         public async Task<ActionResult<IEnumerable<Cliente>>> PostCliente(ClientePostDto clienteDto)
@@ -93,6 +120,99 @@ namespace RankingCyY.Controllers
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetClientes), new { id = cliente.Id }, cliente);
         }
+
+        // Agregar puntos a un cliente
+        [HttpPost("{clienteId}/sumarPuntos")]
+        public async Task<IActionResult> SumarPuntosGenerales(int clienteId, [FromBody] int puntos)
+        {
+            var cliente = await _context.Clientes.FindAsync(clienteId);
+
+            if (cliente == null)
+            {
+                return NotFound("Cliente no encontrado.");
+            }
+
+            // Sumar los puntos a los puntos generales
+            cliente.PuntosGenerales += puntos;
+
+            // Guardar los cambios
+            await _context.SaveChangesAsync();
+
+            return Ok(cliente);
+        }
+
+        // Asignar ingsignia general a un cliente
+        [HttpPost("{clienteId}/asignarInsigniaGeneral")]
+        public async Task<IActionResult> AsignarInsigniaGeneral(int clienteId)
+        {
+            var cliente = await _context.Clientes.FindAsync(clienteId);
+
+            if (cliente == null)
+            {
+                return NotFound("Cliente no encontrado.");
+            }
+
+            // Lógica para verificar si el cliente cumple con los requisitos para obtener una insignia general
+            if (cliente.PuntosGenerales >= 200)  // Umbral de ejemplo
+            {
+                var insignia = await _context.Insignias.FirstOrDefaultAsync(i => i.Nombre == "Cliente Premium");
+
+                if (insignia != null)
+                {
+                    var clienteInsignia = new ClienteInsignia
+                    {
+                        ClienteId = clienteId,
+                        InsigniaId = insignia.Id,
+                        FechaOtorgada = DateTime.UtcNow
+                    };
+
+                    _context.ClienteInsignias.Add(clienteInsignia);
+                    await _context.SaveChangesAsync();
+
+                    return Ok("Insignia otorgada.");
+                }
+            }
+
+            return BadRequest("El cliente no cumple con los requisitos para obtener la insignia.");
+        }
+
+        // Asiganr insignia de temporada a un cliente
+        [HttpPost("{clienteId}/asignarInsigniaTemporada")]
+        public async Task<IActionResult> AsignarInsigniaTemporada(int clienteId, int temporadaId)
+        {
+            var cliente = await _context.Clientes.FindAsync(clienteId);
+            var temporada = await _context.Temporadas.FindAsync(temporadaId);
+
+            if (cliente == null || temporada == null)
+            {
+                return NotFound("Cliente o temporada no encontrados.");
+            }
+
+            // Verificar si la fecha actual está dentro del rango de la temporada
+            if (DateTime.Now >= temporada.Inicio && DateTime.UtcNow <= temporada.Fin)
+            {
+                // Lógica para otorgar la insignia de temporada
+                var insignia = await _context.Insignias.FirstOrDefaultAsync(i => i.Nombre == "Reto Especial de Verano");
+
+                if (insignia != null && cliente.PuntosGenerales >= 100) // Ejemplo: 100 puntos durante la temporada
+                {
+                    var clienteInsignia = new ClienteInsignia
+                    {
+                        ClienteId = clienteId,
+                        InsigniaId = insignia.Id,
+                        FechaOtorgada = DateTime.UtcNow
+                    };
+
+                    _context.ClienteInsignias.Add(clienteInsignia);
+                    await _context.SaveChangesAsync();
+
+                    return Ok("Insignia de temporada otorgada.");
+                }
+            }
+
+            return BadRequest("La insignia no puede ser otorgada fuera del rango de la temporada.");
+        }
+
 
         // Eliminar cliente
         [HttpDelete("delete")]

@@ -4,6 +4,6 @@
     {
         public DateTime Inicio { get; set; }
         public DateTime Fin { get; set; }
-        public string Nombre { get; set; }
+        public required string Nombre { get; set; }
     }
 }

@@ -9,5 +9,7 @@
 
         public DbSet<Cliente> Clientes { get; set; }
         public DbSet<Temporadas> Temporadas { get; set; }
+        public DbSet<Insignias> Insignias { get; set; }
+        public DbSet<ClienteInsignia> ClienteInsignias { get; set; }
     }
 }
