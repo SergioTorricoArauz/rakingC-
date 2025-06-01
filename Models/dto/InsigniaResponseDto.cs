@@ -11,5 +11,7 @@ namespace RankingCyY.Models.dto
         public DateTime? FechaInicio { get; set; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public DateTime? FechaFin { get; set; }
+
+        public DateTime? FechaOtorgada { get; set; }
     }
 }

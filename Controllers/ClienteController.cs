@@ -79,7 +79,8 @@ namespace RankingCyY.Controllers
                 Nombre = ci.Insignia.Nombre,
                 Requisitos = ci.Insignia.Requisitos,
                 FechaInicio = ci.Insignia.FechaInicio,
-                FechaFin = ci.Insignia.FechaFin
+                FechaFin = ci.Insignia.FechaFin,
+                FechaOtorgada = ci.FechaOtorgada
             }).ToList();
 
             return Ok(insigniasDto);
@@ -141,40 +142,62 @@ namespace RankingCyY.Controllers
             return Ok(cliente);
         }
 
-        // Asignar ingsignia general a un cliente
-        [HttpPost("{clienteId}/asignarInsigniaGeneral")]
-        public async Task<IActionResult> AsignarInsigniaGeneral(int clienteId)
+        [HttpPost("{clienteId}/asignarInsignias")]
+        public async Task<IActionResult> AsignarInsignias(int clienteId)
         {
             var cliente = await _context.Clientes.FindAsync(clienteId);
-
             if (cliente == null)
-            {
                 return NotFound("Cliente no encontrado.");
-            }
 
-            // Lógica para verificar si el cliente cumple con los requisitos para obtener una insignia general
-            if (cliente.PuntosGenerales >= 200)  // Umbral de ejemplo
+            // Define las reglas de insignias en una lista
+            var reglasInsignias = new List<(string Nombre, int PuntosMinimos)>
+    {
+        ("Cliente Plata", 100),
+        ("Cliente Oro", 200),
+        ("Cliente Premium", 300),
+        ("Temporada Top 1", 200),
+        ("Temporada Top 2", 150),
+        ("Temporada Top 3", 100),
+    };
+
+            var insigniasOtorgadas = new List<string>();
+
+            foreach (var regla in reglasInsignias)
             {
-                var insignia = await _context.Insignias.FirstOrDefaultAsync(i => i.Nombre == "Cliente Premium");
-
-                if (insignia != null)
+                // Solo asignar la insignia si el cliente cumple con los requisitos de puntos
+                if (cliente.PuntosGenerales >= regla.PuntosMinimos)
                 {
-                    var clienteInsignia = new ClienteInsignia
+                    // Verificar si la insignia ya existe y si no ha sido otorgada previamente
+                    var insignia = await _context.Insignias
+                        .FirstOrDefaultAsync(i => i.Nombre == regla.Nombre);
+
+                    if (insignia != null &&
+                        !await _context.ClienteInsignias
+                            .AnyAsync(ci => ci.ClienteId == clienteId && ci.InsigniaId == insignia.Id))
                     {
-                        ClienteId = clienteId,
-                        InsigniaId = insignia.Id,
-                        FechaOtorgada = DateTime.UtcNow
-                    };
+                        // Asignar la insignia
+                        var clienteInsignia = new ClienteInsignia
+                        {
+                            ClienteId = clienteId,
+                            InsigniaId = insignia.Id,
+                            FechaOtorgada = DateTime.UtcNow // Usar UTC para evitar problemas de zona horaria
+                        };
 
-                    _context.ClienteInsignias.Add(clienteInsignia);
-                    await _context.SaveChangesAsync();
-
-                    return Ok("Insignia otorgada.");
+                        _context.ClienteInsignias.Add(clienteInsignia);
+                        insigniasOtorgadas.Add(regla.Nombre); // Registrar la insignia otorgada
+                    }
                 }
             }
 
-            return BadRequest("El cliente no cumple con los requisitos para obtener la insignia.");
+            // Si no se otorgaron nuevas insignias, retornar un error
+            if (insigniasOtorgadas.Count == 0)
+                return BadRequest("El cliente no cumple con los requisitos para nuevas insignias.");
+
+            // Guardar los cambios en la base de datos
+            await _context.SaveChangesAsync();
+            return Ok($"Insignias otorgadas: {string.Join(", ", insigniasOtorgadas)}");
         }
+
 
         // Asiganr insignia de temporada a un cliente
         [HttpPost("{clienteId}/asignarInsigniaTemporada")]
