@@ -115,7 +115,7 @@ namespace RankingCyY.Controllers
                 Email = clienteDto.Email,
                 Password = clienteDto.Password,
                 PuntosGenerales = clienteDto.PuntosGenerales,
-                FechaRegistro = DateTime.UtcNow
+                FechaRegistro = DateTime.UtcNow.Date
             };
             _context.Clientes.Add(cliente);
             await _context.SaveChangesAsync();
@@ -194,45 +194,6 @@ namespace RankingCyY.Controllers
             await _context.SaveChangesAsync();
             return Ok($"Insignias otorgadas: {string.Join(", ", insigniasOtorgadas)}");
         }
-
-
-        // Asiganr insignia de temporada a un cliente
-        [HttpPost("{clienteId}/asignarInsigniaTemporada")]
-        public async Task<IActionResult> AsignarInsigniaTemporada(int clienteId, int temporadaId)
-        {
-            var cliente = await _context.Clientes.FindAsync(clienteId);
-            var temporada = await _context.Temporadas.FindAsync(temporadaId);
-
-            if (cliente == null || temporada == null)
-            {
-                return NotFound("Cliente o temporada no encontrados.");
-            }
-
-            // Verificar si la fecha actual está dentro del rango de la temporada
-            if (DateTime.Now >= temporada.Inicio && DateTime.UtcNow <= temporada.Fin)
-            {
-                // Lógica para otorgar la insignia de temporada
-                var insignia = await _context.Insignias.FirstOrDefaultAsync(i => i.Nombre == "Reto Especial de Verano");
-
-                if (insignia != null && cliente.PuntosGenerales >= 100) // Ejemplo: 100 puntos durante la temporada
-                {
-                    var clienteInsignia = new ClienteInsignia
-                    {
-                        ClienteId = clienteId,
-                        InsigniaId = insignia.Id,
-                        FechaOtorgada = DateTime.UtcNow
-                    };
-
-                    _context.ClienteInsignias.Add(clienteInsignia);
-                    await _context.SaveChangesAsync();
-
-                    return Ok("Insignia de temporada otorgada.");
-                }
-            }
-
-            return BadRequest("La insignia no puede ser otorgada fuera del rango de la temporada.");
-        }
-
 
         // Eliminar cliente
         [HttpDelete("delete")]

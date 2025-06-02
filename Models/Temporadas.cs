@@ -13,5 +13,7 @@ namespace RankingCyY.Models
         public DateTime Fin { get; set; }
         [Column("nombre")]
         public string Nombre { get; set; }
+        [Column("estado_disponible")]
+        public bool EstaDisponible { get; set; } = true;
     }
 }

@@ -141,8 +141,8 @@ namespace RankingCyY.Controllers
 
 
 
-        // Crear un nuevo puntaje
-        [HttpPost("register")]
+        // Crear un nuevo puntaje de cliente con temporada
+        [HttpPost("register-cliente-temporada")]
         public async Task<ActionResult<PuntajeResponseDto>> RegisterPuntaje(PuntajePostDto puntajeRequest)
         {
             if (puntajeRequest == null)
