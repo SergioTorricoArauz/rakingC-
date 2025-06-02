@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RankingCyY.Data;
@@ -21,6 +22,7 @@ namespace RankingCyY.Controllers
 
         // Obtener todos los clientes desde la base de datos
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<ClienteResponseDto>>> GetClientes()
         {
             var clientes = await _context.Clientes.ToListAsync();
