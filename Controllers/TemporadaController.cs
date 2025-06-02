@@ -156,11 +156,6 @@ namespace RankingCyY.Controllers
                 return BadRequest("La temporada ya está desactivada.");
             }
 
-
-            // Guardar los cambios en la base de datos
-            await _context.SaveChangesAsync();
-
-
             // Guardar los cambios en la base de datos
             await _context.SaveChangesAsync();
 
