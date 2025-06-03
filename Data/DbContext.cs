@@ -12,5 +12,7 @@
         public DbSet<Insignias> Insignias { get; set; }
         public DbSet<ClienteInsignia> ClienteInsignias { get; set; }
         public DbSet<Puntajes> Puntajes { get; set; }
+        public DbSet<Actividades> Actividades { get; set; }
+        public DbSet<ClienteActividad> ClienteActividades { get; set; }
     }
 }

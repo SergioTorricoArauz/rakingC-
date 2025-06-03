@@ -22,10 +22,12 @@ namespace RankingCyY.Controllers
 
         // Obtener todos los clientes desde la base de datos
         [HttpGet]
-        [Authorize]
         public async Task<ActionResult<IEnumerable<ClienteResponseDto>>> GetClientes()
         {
-            var clientes = await _context.Clientes.ToListAsync();
+            var clientes = await _context.Clientes
+                .OrderByDescending(c => c.PuntosGenerales)
+                .ToListAsync();
+
             if (clientes == null || !clientes.Any())
             {
                 return NotFound("No se encontraron clientes.");

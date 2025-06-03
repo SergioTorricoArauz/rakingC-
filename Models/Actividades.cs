@@ -13,9 +13,7 @@ namespace RankingCyY.Models
         public int PuntosActividad { get; set; }
         [Column("fecha_actividad")]
         public DateTime FechaActividad { get; set; }
-        [Column("id_cliente")]
-        public int ClienteId { get; set; }
 
-        public Cliente Cliente { get; set; }
+        public ICollection<ClienteActividad> ClienteActividades { get; set; }
     }
 }

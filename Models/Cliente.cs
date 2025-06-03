@@ -22,5 +22,8 @@ namespace RankingCyY.Models
 
         // Relación muchos a muchos con Insignias
         public ICollection<ClienteInsignia> ClienteInsignias { get; set; }
+
+        // Relación uno a muchos con ClienteActividades
+        public ICollection<ClienteActividad> ClienteActividades { get; set; }
     }
 }
