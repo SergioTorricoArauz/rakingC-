@@ -16,41 +16,14 @@ namespace RankingCyY.Controllers
         {
             _context = context;
         }
-        /*
-        // Obtener los puntajes ordenado desde el mas alto hasta el mas bajo
-        [HttpGet("ranking")]
-        public async Task<ActionResult<IEnumerable<PuntajeResponseDto>>> GetPuntajes()
-        {
-            var puntajes = await _context.Puntajes
-                .Include(p => p.Cliente)  // Incluir Cliente para obtener su nombre
-                .Include(p => p.Temporada)  // Incluir Temporada para obtener su nombre
-                .OrderByDescending(p => p.Puntos)
-                .ToListAsync();
-
-            if (puntajes == null || !puntajes.Any())
-            {
-                return NotFound("No se encontraron puntajes.");
-            }
-
-            var puntajesDto = puntajes.Select(p => new PuntajeResponseDto
-            {
-                Id = p.Id,
-                Puntos = p.Puntos,
-                ClienteNombre = p.Cliente.Nombre,  // Asignar nombre del cliente
-                TemporadaNombre = p.Temporada.Nombre  // Asignar nombre de la temporada
-            }).ToList();
-
-            return Ok(puntajesDto);
-        }
-        */
 
         // Obtener un puntaje por ID
         [HttpGet("{id}")]
         public async Task<ActionResult<PuntajeResponseDto>> GetPuntaje(int id)
         {
             var puntaje = await _context.Puntajes
-                .Include(p => p.Cliente)  // Incluir Cliente para obtener su nombre
-                .Include(p => p.Temporada)  // Incluir Temporada para obtener su nombre
+                .Include(p => p.Cliente)
+                .Include(p => p.Temporada)
                 .FirstOrDefaultAsync(p => p.Id == id);
             if (puntaje == null)
             {
@@ -60,77 +33,44 @@ namespace RankingCyY.Controllers
             {
                 Id = puntaje.Id,
                 Puntos = puntaje.Puntos,
-                ClienteNombre = puntaje.Cliente.Nombre,  // Asignar nombre del cliente
-                TemporadaNombre = puntaje.Temporada.Nombre  // Asignar nombre de la temporada
+                ClienteNombre = puntaje.Cliente.Nombre,
+                TemporadaNombre = puntaje.Temporada.Nombre
             };
             return Ok(puntajeDto);
         }
-
-        /*
-        // Obtener Puntajes por temporada
-        [HttpGet("temporada/{temporadaId}/puntajes")]
-        public async Task<ActionResult<IEnumerable<PuntajeResponseDto>>> GetPuntajesPorTemporada(int temporadaId)
-        {
-            // Filtrar los puntajes por temporada específica
-            var puntajes = await _context.Puntajes
-                .Where(p => p.TemporadaId == temporadaId)  // Filtrar por temporada
-                .Include(p => p.Cliente)  // Incluir Cliente para obtener su nombre
-                .Include(p => p.Temporada)  // Incluir Temporada para obtener su nombre
-                .OrderByDescending(p => p.Puntos)  // Ordenar por puntos de mayor a menor
-                .ToListAsync();
-
-            if (puntajes == null || !puntajes.Any())
-            {
-                return NotFound("No se encontraron puntajes para la temporada especificada.");
-            }
-
-            // Convertir los puntajes a DTO
-            var puntajesDto = puntajes.Select(p => new PuntajeResponseDto
-            {
-                Id = p.Id,
-                Puntos = p.Puntos,
-                ClienteNombre = p.Cliente.Nombre,  // Agregar nombre del cliente
-                TemporadaNombre = p.Temporada.Nombre  // Agregar nombre de la temporada
-            }).ToList();
-
-            return Ok(puntajesDto);
-        }
-        */
 
         // Obtener el ranking de puntajes por temporada
         [HttpGet("ranking/temporada/{temporadaId}")]
         public async Task<ActionResult<IEnumerable<PuntajeResponseDto>>> GetRankingPorTemporada(int temporadaId)
         {
-            // Consultar los puntajes acumulados de todos los clientes en la temporada específica
             var ranking = await _context.Puntajes
-                .Where(p => p.TemporadaId == temporadaId)  // Filtrar por la temporada
-                .GroupBy(p => p.ClienteId)  // Agrupar por cliente
+                .Where(p => p.TemporadaId == temporadaId)
+                .GroupBy(p => p.ClienteId)
                 .Select(g => new
                 {
-                    ClienteId = g.Key,  // Obtener el Id del Cliente
-                    PuntosTotales = g.Sum(p => p.Puntos)  // Sumar los puntos por cliente
+                    ClienteId = g.Key,
+                    PuntosTotales = g.Sum(p => p.Puntos)
                 })
-                .OrderByDescending(r => r.PuntosTotales)  // Ordenar por los puntos totales, de mayor a menor
+                .OrderByDescending(r => r.PuntosTotales)
                 .Join(
-                    _context.Clientes,  // Unir con los clientes para obtener sus nombres
-                    r => r.ClienteId,   // Relacionar ClienteId
-                    cliente => cliente.Id,  // Relacionar ClienteId
-                    (r, cliente) => new { r, cliente }  // Crear un nuevo objeto con puntaje y nombre del cliente
+                    _context.Clientes,
+                    r => r.ClienteId,
+                    cliente => cliente.Id,
+                    (r, cliente) => new { r, cliente }
                 )
                 .Join(
-                    _context.Temporadas,  // Unir con las temporadas para obtener el nombre de la temporada
-                    r => temporadaId,    // Relacionar TemporadaId
-                    temporada => temporada.Id,  // Relacionar TemporadaId
+                    _context.Temporadas,
+                    r => temporadaId,
+                    temporada => temporada.Id,
                     (r, temporada) => new PuntajeResponseDto
                     {
-                        Id = r.r.ClienteId,  // Asignar el ID del Cliente
-                        ClienteNombre = r.cliente.Nombre,  // Nombre del cliente
-                        Puntos = r.r.PuntosTotales,  // Puntos totales por temporada
-                        TemporadaNombre = temporada.Nombre  // Nombre de la temporada
+                        Id = r.r.ClienteId,
+                        ClienteNombre = r.cliente.Nombre,
+                        Puntos = r.r.PuntosTotales,
+                        TemporadaNombre = temporada.Nombre
                     })
                 .ToListAsync();
 
-            // Si no hay puntajes, devolver un mensaje
             if (ranking == null || !ranking.Any())
             {
                 return NotFound("No se encontraron puntajes para la temporada especificada.");
@@ -171,8 +111,8 @@ namespace RankingCyY.Controllers
             {
                 Id = nuevoPuntaje.Id,
                 Puntos = nuevoPuntaje.Puntos,
-                ClienteNombre = cliente.Nombre,  // Asignar nombre del cliente
-                TemporadaNombre = temporada.Nombre  // Asignar nombre de la temporada
+                ClienteNombre = cliente.Nombre,
+                TemporadaNombre = temporada.Nombre
             };
             return CreatedAtAction(nameof(GetPuntaje), new { id = nuevoPuntaje.Id }, puntajeDto);
         }

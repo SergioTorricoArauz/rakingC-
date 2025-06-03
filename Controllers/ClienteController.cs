@@ -153,7 +153,6 @@ namespace RankingCyY.Controllers
             if (cliente == null)
                 return NotFound("Cliente no encontrado.");
 
-            // Define las reglas de insignias en una lista
             var reglasInsignias = new List<(string Nombre, int PuntosMinimos)>
     {
         ("Cliente Plata", 100),
@@ -165,10 +164,8 @@ namespace RankingCyY.Controllers
 
             foreach (var regla in reglasInsignias)
             {
-                // Solo asignar la insignia si el cliente cumple con los requisitos de puntos
                 if (cliente.PuntosGenerales >= regla.PuntosMinimos)
                 {
-                    // Verificar si la insignia ya existe y si no ha sido otorgada previamente
                     var insignia = await _context.Insignias
                         .FirstOrDefaultAsync(i => i.Nombre == regla.Nombre);
 
@@ -181,20 +178,17 @@ namespace RankingCyY.Controllers
                         {
                             ClienteId = clienteId,
                             InsigniaId = insignia.Id,
-                            FechaOtorgada = DateTime.UtcNow // Usar UTC para evitar problemas de zona horaria
+                            FechaOtorgada = DateTime.UtcNow
                         };
 
                         _context.ClienteInsignias.Add(clienteInsignia);
-                        insigniasOtorgadas.Add(regla.Nombre); // Registrar la insignia otorgada
+                        insigniasOtorgadas.Add(regla.Nombre);
                     }
                 }
             }
-
-            // Si no se otorgaron nuevas insignias, retornar un error
             if (insigniasOtorgadas.Count == 0)
                 return BadRequest("El cliente no cumple con los requisitos para nuevas insignias.");
 
-            // Guardar los cambios en la base de datos
             await _context.SaveChangesAsync();
             return Ok($"Insignias otorgadas: {string.Join(", ", insigniasOtorgadas)}");
         }

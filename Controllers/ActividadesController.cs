@@ -61,25 +61,19 @@ namespace RankingCyY.Controllers
             if (cliente == null)
                 return NotFound("Cliente no encontrado.");
 
-            // Verificar si el cliente ya participó en la actividad
             if (await ClienteYaParticipoEnActividad(actividadRequest.ClienteId, actividadRequest.ActividadId))
                 return BadRequest("El cliente ya ha participado en esta actividad.");
 
-            // Registrar la participación
             await RegistrarParticipacionEnActividad(actividadRequest.ClienteId, actividadRequest.ActividadId);
 
-            // Sumar los puntos de la actividad al cliente
             await ActualizarPuntosCliente(cliente);
 
-            // Actualizar los puntos en la temporada activa
             await ActualizarPuntajeEnTemporada(actividadRequest.ClienteId, actividad.PuntosActividad);
 
             await _context.SaveChangesAsync();
 
             return Ok($"Cliente {cliente.Nombre} ha participado en la actividad y ha ganado {actividad.PuntosActividad} puntos.");
         }
-
-        // Métodos auxiliares para la lógica del endpoint
 
         private async Task<Actividades> ObtenerActividadPorId(int actividadId)
         {
@@ -109,7 +103,7 @@ namespace RankingCyY.Controllers
 
         private async Task ActualizarPuntosCliente(Cliente cliente)
         {
-            cliente.PuntosGenerales += 2; // O 2 puntos según tu lógica actual
+            cliente.PuntosGenerales += 2;
         }
 
         private async Task ActualizarPuntajeEnTemporada(int clienteId, int puntosActividad)
