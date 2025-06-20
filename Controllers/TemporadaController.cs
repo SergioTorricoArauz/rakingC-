@@ -114,12 +114,13 @@ namespace RankingCyY.Controllers
             return CreatedAtAction(nameof(GetTemporada), new { id = nuevaTemporada.Id }, response);
         }
 
+        //Finaliza la temporada
         [HttpPost("asignarInsignias/temporada/{temporadaId}")]
         public async Task<IActionResult> AsignarInsigniasTemporada(int temporadaId)
         {
             var ranking = await GetRankingPorTemporadaHelper(temporadaId);
 
-            if (!ranking.Any())
+            if (ranking.Count == 0)
             {
                 return NotFound("No hay clientes en la temporada especificada.");
             }
@@ -141,21 +142,14 @@ namespace RankingCyY.Controllers
                 Insignias? insignia = null;
 
                 if (i == 0)
-                {
                     insignia = insignias.FirstOrDefault(i => i.Nombre == "Temporada Top 1");
-                }
                 else if (i == 1)
-                {
                     insignia = insignias.FirstOrDefault(i => i.Nombre == "Temporada Top 2");
-                }
                 else if (i == 2)
-                {
                     insignia = insignias.FirstOrDefault(i => i.Nombre == "Temporada Top 3");
-                }
 
                 if (insignia != null && !await _context.ClienteInsignias.AnyAsync(ci => ci.ClienteId == puntaje.Id && ci.InsigniaId == insignia.Id))
                 {
-                    // Asignar la insignia
                     _context.ClienteInsignias.Add(new ClienteInsignia
                     {
                         ClienteId = puntaje.Id,
@@ -173,17 +167,15 @@ namespace RankingCyY.Controllers
                 return NotFound($"Temporada con ID {temporadaId} no encontrada.");
             }
 
-            if (temporada.EstaDisponible)
+            // Solo finaliza automáticamente si es la temporada activa y la fecha de fin ya se cumplió
+            if (temporada.EstaDisponible && DateTime.UtcNow.Date >= temporada.Fin.Date)
             {
                 temporada.EstaDisponible = false;
-            }
-            else
-            {
-                return BadRequest("La temporada ya está desactivada.");
+                await _context.SaveChangesAsync();
+                return Ok($"Insignias otorgadas: {string.Join(", ", insigniasOtorgadas)}. La temporada activa ha finalizado automáticamente.");
             }
 
             await _context.SaveChangesAsync();
-
             return Ok($"Insignias otorgadas: {string.Join(", ", insigniasOtorgadas)}");
         }
 

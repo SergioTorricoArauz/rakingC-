@@ -33,6 +33,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;    // Actualiza expiración en cada solicitud
     });
 
+// Registrar servicios de la aplicación
+builder.Services.AddHostedService<RankingCyY.Services.TemporadaService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
