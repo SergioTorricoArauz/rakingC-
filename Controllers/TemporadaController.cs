@@ -78,26 +78,40 @@ namespace RankingCyY.Controllers
             var temporadaActiva = await _context.Temporadas
                 .FirstOrDefaultAsync(t => t.EstaDisponible);
 
-            if (temporadaActiva != null)
+            // Buscar la última temporada creada (por fecha de fin más reciente)
+            var ultimaTemporada = await _context.Temporadas
+                .OrderByDescending(t => t.Fin)
+                .FirstOrDefaultAsync();
+
+            // Si hay una temporada previa, validar que la nueva temporada inicie después de la última que terminó
+            if (ultimaTemporada != null && temporadaDto.Inicio <= ultimaTemporada.Fin)
             {
-                // Validar que la fecha de fin no coincida
-                if (temporadaActiva.Fin.Date == temporadaDto.Fin.Date)
-                {
-                    return BadRequest("Ya existe una temporada activa con la misma fecha de fin.");
-                }
-                // No permitir crear otra temporada activa
-                return BadRequest("Ya existe una temporada activa. Debe finalizarla antes de crear una nueva.");
+                return BadRequest("La fecha de inicio de la nueva temporada debe ser posterior a la fecha de fin de la última temporada creada.");
             }
+
+            // Si hay una temporada activa, la nueva se crea como inactiva
+            bool esActiva = temporadaActiva == null;
 
             var nuevaTemporada = new Models.Temporadas
             {
                 Inicio = temporadaDto.Inicio,
                 Fin = temporadaDto.Fin,
-                Nombre = temporadaDto.Nombre
+                Nombre = temporadaDto.Nombre,
+                EstaDisponible = esActiva
             };
             _context.Temporadas.Add(nuevaTemporada);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetTemporada), new { id = nuevaTemporada.Id }, temporadaDto);
+
+            var response = new TemporadaResponseDto
+            {
+                Id = nuevaTemporada.Id,
+                Inicio = nuevaTemporada.Inicio,
+                Fin = nuevaTemporada.Fin,
+                Nombre = nuevaTemporada.Nombre,
+                EstaDisponible = nuevaTemporada.EstaDisponible
+            };
+
+            return CreatedAtAction(nameof(GetTemporada), new { id = nuevaTemporada.Id }, response);
         }
 
         [HttpPost("asignarInsignias/temporada/{temporadaId}")]
