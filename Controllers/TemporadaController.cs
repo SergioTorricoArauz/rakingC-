@@ -57,6 +57,15 @@ namespace RankingCyY.Controllers
             return Ok(temporadaDto);
         }
 
+        [HttpGet("participa/{clienteId}/temporada/{temporadaId}")]
+        public async Task<ActionResult<bool>> ClienteParticipaEnTemporada(int clienteId, int temporadaId)
+        {
+            var existe = await _context.Puntajes
+                .AnyAsync(p => p.ClienteId == clienteId && p.TemporadaId == temporadaId);
+
+            return Ok(existe);
+        }
+
         [HttpPost("register")]
         public async Task<ActionResult<TemporadaResponseDto>> CreateTemporada([FromBody] TemporadaPostDto temporadaDto)
         {
@@ -64,6 +73,22 @@ namespace RankingCyY.Controllers
             {
                 return BadRequest("Los datos de la temporada son inválidos.");
             }
+
+            // Buscar si ya existe una temporada activa
+            var temporadaActiva = await _context.Temporadas
+                .FirstOrDefaultAsync(t => t.EstaDisponible);
+
+            if (temporadaActiva != null)
+            {
+                // Validar que la fecha de fin no coincida
+                if (temporadaActiva.Fin.Date == temporadaDto.Fin.Date)
+                {
+                    return BadRequest("Ya existe una temporada activa con la misma fecha de fin.");
+                }
+                // No permitir crear otra temporada activa
+                return BadRequest("Ya existe una temporada activa. Debe finalizarla antes de crear una nueva.");
+            }
+
             var nuevaTemporada = new Models.Temporadas
             {
                 Inicio = temporadaDto.Inicio,
@@ -99,7 +124,7 @@ namespace RankingCyY.Controllers
             for (int i = 0; i < 3; i++)
             {
                 var puntaje = ranking[i];
-                Insignias insignia = null;
+                Insignias? insignia = null;
 
                 if (i == 0)
                 {

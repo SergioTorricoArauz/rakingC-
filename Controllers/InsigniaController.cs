@@ -8,14 +8,9 @@ namespace RankingCyY.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class InsigniaController : ControllerBase
+    public class InsigniaController(AppDbContext context) : ControllerBase
     {
-        private readonly AppDbContext _context;
-
-        public InsigniaController(AppDbContext context)
-        {
-            _context = context;
-        }
+        private readonly AppDbContext _context = context;
 
         // Obtener todas las insignias desde la base de datos
         [HttpGet]

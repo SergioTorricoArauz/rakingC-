@@ -102,6 +102,8 @@ namespace RankingCyY.Controllers
             var nuevoPuntaje = new Puntajes
             {
                 Puntos = puntajeRequest.Puntos,
+                ClienteId = puntajeRequest.ClienteId,
+                TemporadaId = puntajeRequest.TemporadaId,
                 Cliente = cliente,
                 Temporada = temporada
             };
@@ -111,6 +113,7 @@ namespace RankingCyY.Controllers
             {
                 Id = nuevoPuntaje.Id,
                 Puntos = nuevoPuntaje.Puntos,
+                ClienteId = nuevoPuntaje.ClienteId,
                 ClienteNombre = cliente.Nombre,
                 TemporadaNombre = temporada.Nombre
             };

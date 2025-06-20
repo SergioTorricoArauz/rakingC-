@@ -50,7 +50,11 @@ namespace RankingCyY.Controllers
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
                 new ClaimsPrincipal(claimsIdentity), authProperties);
 
-            return Ok("Usuario autenticado correctamente");
+            return Ok(new
+            {
+                id = usuario.Id,
+                nombre = usuario.Nombre
+            });
         }
 
         // Endpoint para logout

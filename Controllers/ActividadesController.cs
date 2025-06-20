@@ -64,9 +64,9 @@ namespace RankingCyY.Controllers
             if (await ClienteYaParticipoEnActividad(actividadRequest.ClienteId, actividadRequest.ActividadId))
                 return BadRequest("El cliente ya ha participado en esta actividad.");
 
-            await RegistrarParticipacionEnActividad(actividadRequest.ClienteId, actividadRequest.ActividadId);
+            RegistrarParticipacionEnActividad(actividadRequest.ClienteId, actividadRequest.ActividadId);
 
-            await ActualizarPuntosCliente(cliente);
+            ActualizarPuntosCliente(cliente);
 
             await ActualizarPuntajeEnTemporada(actividadRequest.ClienteId, actividad.PuntosActividad);
 
@@ -75,12 +75,12 @@ namespace RankingCyY.Controllers
             return Ok($"Cliente {cliente.Nombre} ha participado en la actividad y ha ganado {actividad.PuntosActividad} puntos.");
         }
 
-        private async Task<Actividades> ObtenerActividadPorId(int actividadId)
+        private async Task<Actividades?> ObtenerActividadPorId(int actividadId)
         {
             return await _context.Actividades.FindAsync(actividadId);
         }
 
-        private async Task<Cliente> ObtenerClientePorId(int clienteId)
+        private async Task<Cliente?> ObtenerClientePorId(int clienteId)
         {
             return await _context.Clientes.FindAsync(clienteId);
         }
@@ -91,7 +91,7 @@ namespace RankingCyY.Controllers
                 .AnyAsync(ca => ca.ClienteId == clienteId && ca.ActividadId == actividadId);
         }
 
-        private async Task RegistrarParticipacionEnActividad(int clienteId, int actividadId)
+        private void RegistrarParticipacionEnActividad(int clienteId, int actividadId)
         {
             var clienteActividad = new ClienteActividad
             {
@@ -101,7 +101,7 @@ namespace RankingCyY.Controllers
             _context.ClienteActividades.Add(clienteActividad);
         }
 
-        private async Task ActualizarPuntosCliente(Cliente cliente)
+        private static void ActualizarPuntosCliente(Cliente cliente)
         {
             cliente.PuntosGenerales += 2;
         }
