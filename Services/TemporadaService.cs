@@ -106,21 +106,15 @@ namespace RankingCyY.Services
 
                 if (insignia != null)
                 {
-                    // Verificar si el cliente ya tiene esta insignia
-                    var clienteInsigniaExistente = await db.ClienteInsignias
-                        .AnyAsync(ci => ci.ClienteId == puntaje.ClienteId && ci.InsigniaId == insignia.Id);
-
-                    if (!clienteInsigniaExistente)
+                    // Asignar la insignia al cliente sin verificar si ya la tiene
+                    db.ClienteInsignias.Add(new ClienteInsignia
                     {
-                        // Asignar la insignia al cliente
-                        db.ClienteInsignias.Add(new ClienteInsignia
-                        {
-                            ClienteId = puntaje.ClienteId,
-                            InsigniaId = insignia.Id,
-                            FechaOtorgada = DateTime.UtcNow.Date
-                        });
-                        insigniasOtorgadas.Add(insignia.Nombre);  // Guardar el nombre de la insignia otorgada
-                    }
+                        ClienteId = puntaje.ClienteId,
+                        InsigniaId = insignia.Id,
+                        FechaOtorgada = DateTime.UtcNow.Date  // Fecha de otorgamiento
+                    });
+
+                    insigniasOtorgadas.Add(insignia.Nombre);  // Guardar el nombre de la insignia otorgada
                 }
             }
 
@@ -128,6 +122,7 @@ namespace RankingCyY.Services
             await db.SaveChangesAsync();
             _logger.LogInformation("Insignias otorgadas: {Insignias}", string.Join(", ", insigniasOtorgadas));
         }
+
     }
 
 }
