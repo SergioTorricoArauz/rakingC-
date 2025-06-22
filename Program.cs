@@ -1,60 +1,81 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+﻿// Program.cs  –  .NET 7/8 top-level statements
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using RankingCyY.Data;
+using RankingCyY.Domain;    // ITemporadaDomainService / TemporadaDomainService
+using RankingCyY.Services;  // TemporadaSchedulerService / SchedulerOptions
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1) Definir la política de CORS que permita solo el origen Angular (http://localhost:4200)
+// ────────────────────────────────────────────────────────────────────────────────
+// 1) CORS – solo permite solicitudes del front Angular en http://localhost:4200
+// ────────────────────────────────────────────────────────────────────────────────
 const string AngularCorsPolicy = "PermitirAngular";
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(AngularCorsPolicy, policy =>
     {
-        policy
-            .WithOrigins("http://localhost:4200") // Origen permitido
-            .AllowAnyMethod()                      // GET, POST, PUT, DELETE, etc.
-            .AllowAnyHeader()                      // Cualquier encabezado (Content-Type, Authorization...)
-            .AllowCredentials();                   // Permitir envío de cookies/credenciales si las usas
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
-// Configurar la conexión a PostgreSQL
+// ────────────────────────────────────────────────────────────────────────────────
+// 2) Base de datos PostgreSQL
+// ────────────────────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Configuración de la autenticación basada en cookies
+// ────────────────────────────────────────────────────────────────────────────────
+// 3) Autenticación basada en cookies
+// ────────────────────────────────────────────────────────────────────────────────
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
-        options.LoginPath = "/Auth/Login";   // Ruta de login
-        options.LogoutPath = "/Auth/Logout"; // Ruta de logout
-        options.ExpireTimeSpan = TimeSpan.FromMinutes(30); // Duración de la cookie
-        options.SlidingExpiration = true;    // Actualiza expiración en cada solicitud
+        options.LoginPath = "/Auth/Login";
+        options.LogoutPath = "/Auth/Logout";
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+        options.SlidingExpiration = true;
     });
 
-// Registrar servicios de la aplicación
-builder.Services.AddHostedService<RankingCyY.Services.TemporadaService>();
+// ────────────────────────────────────────────────────────────────────────────────
+// 4) Scheduler y dominio de temporadas
+// ────────────────────────────────────────────────────────────────────────────────
+// (En appsettings.json puedes sobreescribir el intervalo, por ejemplo:
+//  "Scheduler": { "IntervalMinutes": 60 })
+builder.Services.Configure<SchedulerOptions>(
+    builder.Configuration.GetSection("Scheduler"));
+
+builder.Services.AddScoped<ITemporadaDomainService, TemporadaDomainService>();
+builder.Services.AddHostedService<TemporadaSchedulerService>();
+
+// ────────────────────────────────────────────────────────────────────────────────
+// 5) API Controllers & Swagger
+// ────────────────────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// 2) En Development, habilitar Swagger
+// ────────────────────────────────────────────────────────────────────────────────
+// 6) Middleware pipeline
+// ────────────────────────────────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// 3) Habilitar CORS justo antes de usar Authentication/Authorization
 app.UseCors(AngularCorsPolicy);
 
 app.UseHttpsRedirection();
 
-app.UseAuthentication(); // Habilitar autenticación (cookies)
-app.UseAuthorization();  // Habilitar autorización
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

@@ -13,13 +13,13 @@
         {
             get
             {
-                var hoy = DateTime.UtcNow.Date;
-                if (EstaDisponible == true)
-                    return "Activa";
-                if (Fin < hoy)
-                    return "Finalizada";
-                if (Inicio > hoy)
-                    return "Pendiente";
+                // Usa la hora de Bolivia para evitar desfases de UTC
+                var bolivia = TimeZoneInfo.FindSystemTimeZoneById("SA Western Standard Time");
+                var hoy = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, bolivia).Date;
+
+                if (EstaDisponible == true) return "Activa"; // Conversión explícita de bool?
+                if (Fin < hoy) return "Finalizada";
+                if (Inicio >= hoy) return "Pendiente";   // ← ahora incluye el mismo día
                 return "Inactiva";
             }
         }
