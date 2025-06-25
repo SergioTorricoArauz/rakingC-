@@ -22,9 +22,9 @@ namespace RankingCyY.Models
         public bool IsSuperUser { get; set; }
 
         // Relación muchos a muchos con Insignias
-        public ICollection<ClienteInsignia> ClienteInsignias { get; set; }
+        public ICollection<ClienteInsignia>? ClienteInsignias { get; set; }
 
         // Relación uno a muchos con ClienteActividades
-        public ICollection<ClienteActividad> ClienteActividades { get; set; }
+        public ICollection<ClienteActividad>? ClienteActividades { get; set; }
     }
 }
