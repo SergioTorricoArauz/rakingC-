@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RankingCyY.Data;
 using RankingCyY.Models;
@@ -200,7 +198,7 @@ namespace RankingCyY.Controllers
             }
             context.Clientes.Remove(cliente);
             await context.SaveChangesAsync();
-            return NoContent(); 
+            return NoContent();
         }
     }
 }
