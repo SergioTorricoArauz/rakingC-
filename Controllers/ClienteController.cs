@@ -11,24 +11,18 @@ namespace RankingCyY.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class ClienteController : ControllerBase
+    public class ClienteController(AppDbContext context) : ControllerBase
     {
-        private readonly AppDbContext _context;
-
-        public ClienteController(AppDbContext context)
-        {
-            _context = context;
-        }
 
         // Obtener todos los clientes desde la base de datos
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ClienteResponseDto>>> GetClientes()
         {
-            var clientes = await _context.Clientes
+            var clientes = await context.Clientes
                 .OrderByDescending(c => c.PuntosGenerales)
                 .ToListAsync();
 
-            if (clientes == null || !clientes.Any())
+            if (clientes == null || clientes.Count == 0)
             {
                 return NotFound("No se encontraron clientes.");
             }
@@ -38,7 +32,8 @@ namespace RankingCyY.Controllers
                 Nombre = c.Nombre,
                 Email = c.Email,
                 PuntosGenerales = c.PuntosGenerales,
-                FechaRegistro = c.FechaRegistro
+                FechaRegistro = c.FechaRegistro,
+                IsSuperUser = c.IsSuperUser
             }).ToList();
             return Ok(clienteDtos);
         }
@@ -47,7 +42,7 @@ namespace RankingCyY.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<ClienteResponseDto>> GetCliente(int id)
         {
-            var cliente = await _context.Clientes.FindAsync(id);
+            var cliente = await context.Clientes.FindAsync(id);
             if (cliente == null)
             {
                 return NotFound($"Cliente con ID {id} no encontrado.");
@@ -58,7 +53,8 @@ namespace RankingCyY.Controllers
                 Nombre = cliente.Nombre,
                 Email = cliente.Email,
                 PuntosGenerales = cliente.PuntosGenerales,
-                FechaRegistro = cliente.FechaRegistro
+                FechaRegistro = cliente.FechaRegistro,
+                IsSuperUser = cliente.IsSuperUser
             };
             return Ok(clienteDto);
         }
@@ -67,7 +63,7 @@ namespace RankingCyY.Controllers
         [HttpGet("{clienteId}/insignias")]
         public async Task<ActionResult<IEnumerable<InsigniaResponseDto>>> GetInsigniasCliente(int clienteId)
         {
-            var clienteInsignias = await _context.ClienteInsignias
+            var clienteInsignias = await context.ClienteInsignias
                 .Where(ci => ci.ClienteId == clienteId)
                 .Include(ci => ci.Insignia)
                 .ToListAsync();
@@ -106,7 +102,7 @@ namespace RankingCyY.Controllers
             }
 
             // Validar si el correo ya existe
-            bool emailExists = await _context.Clientes
+            bool emailExists = await context.Clientes
                 .AnyAsync(c => c.Email.ToLower() == clienteDto.Email.ToLower());
             if (emailExists)
             {
@@ -121,8 +117,8 @@ namespace RankingCyY.Controllers
                 PuntosGenerales = clienteDto.PuntosGenerales,
                 FechaRegistro = DateTime.UtcNow.Date
             };
-            _context.Clientes.Add(cliente);
-            await _context.SaveChangesAsync();
+            context.Clientes.Add(cliente);
+            await context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetClientes), new { id = cliente.Id }, cliente);
         }
 
@@ -130,7 +126,7 @@ namespace RankingCyY.Controllers
         [HttpPost("{clienteId}/sumarPuntos")]
         public async Task<IActionResult> SumarPuntosGenerales(int clienteId, [FromBody] int puntos)
         {
-            var cliente = await _context.Clientes.FindAsync(clienteId);
+            var cliente = await context.Clientes.FindAsync(clienteId);
 
             if (cliente == null)
             {
@@ -141,7 +137,7 @@ namespace RankingCyY.Controllers
             cliente.PuntosGenerales += puntos;
 
             // Guardar los cambios
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             return Ok(cliente);
         }
@@ -149,7 +145,7 @@ namespace RankingCyY.Controllers
         [HttpPost("{clienteId}/asignarInsignias")]
         public async Task<IActionResult> AsignarInsignias(int clienteId)
         {
-            var cliente = await _context.Clientes.FindAsync(clienteId);
+            var cliente = await context.Clientes.FindAsync(clienteId);
             if (cliente == null)
                 return NotFound("Cliente no encontrado.");
 
@@ -166,11 +162,11 @@ namespace RankingCyY.Controllers
             {
                 if (cliente.PuntosGenerales >= regla.PuntosMinimos)
                 {
-                    var insignia = await _context.Insignias
+                    var insignia = await context.Insignias
                         .FirstOrDefaultAsync(i => i.Nombre == regla.Nombre);
 
                     if (insignia != null &&
-                        !await _context.ClienteInsignias
+                        !await context.ClienteInsignias
                             .AnyAsync(ci => ci.ClienteId == clienteId && ci.InsigniaId == insignia.Id))
                     {
                         // Asignar la insignia
@@ -181,7 +177,7 @@ namespace RankingCyY.Controllers
                             FechaOtorgada = DateTime.UtcNow
                         };
 
-                        _context.ClienteInsignias.Add(clienteInsignia);
+                        context.ClienteInsignias.Add(clienteInsignia);
                         insigniasOtorgadas.Add(regla.Nombre);
                     }
                 }
@@ -189,7 +185,7 @@ namespace RankingCyY.Controllers
             if (insigniasOtorgadas.Count == 0)
                 return BadRequest("El cliente no cumple con los requisitos para nuevas insignias.");
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return Ok($"Insignias otorgadas: {string.Join(", ", insigniasOtorgadas)}");
         }
 
@@ -197,13 +193,13 @@ namespace RankingCyY.Controllers
         [HttpDelete("delete")]
         public async Task<IActionResult> DeleteCliente(int id)
         {
-            var cliente = await _context.Clientes.FindAsync(id);
+            var cliente = await context.Clientes.FindAsync(id);
             if (cliente == null)
             {
                 return NotFound($"Cliente con ID {id} no encontrado.");
             }
-            _context.Clientes.Remove(cliente);
-            await _context.SaveChangesAsync();
+            context.Clientes.Remove(cliente);
+            await context.SaveChangesAsync();
             return NoContent(); 
         }
     }

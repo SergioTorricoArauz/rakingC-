@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace RankingCyY.Models
@@ -19,6 +18,8 @@ namespace RankingCyY.Models
         public DateTime FechaRegistro { get; set; }
         [Column("puntos_generales")]
         public int PuntosGenerales { get; set; }
+        [Column("is_super_user")]
+        public bool IsSuperUser { get; set; }
 
         // Relación muchos a muchos con Insignias
         public ICollection<ClienteInsignia> ClienteInsignias { get; set; }

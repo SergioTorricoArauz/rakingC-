@@ -31,7 +31,7 @@ public class TemporadaSchedulerService(
 
                 await VerificarFinalizarAsync(db, ct);
                 await VerificarActivarAsync(db, ct);
-                await VerificarInsigniasAsync(dom, ct);   // ← ahora pasamos el servicio
+                await VerificarInsigniasAsync(dom, ct);
             }
             catch (Exception ex)
             {
@@ -66,7 +66,7 @@ public class TemporadaSchedulerService(
         if (hayActiva) return;
 
         var siguiente = await db.Temporadas
-            .Where(t => !t.EstaDisponible && t.Inicio.Date <= hoy && t.Fin.Date > hoy)
+            .Where(t => !t.EstaDisponible && t.Inicio.Date <= hoy && t.Fin.Date >= hoy)
             .OrderBy(t => t.Inicio)
             .FirstOrDefaultAsync(ct);
 
