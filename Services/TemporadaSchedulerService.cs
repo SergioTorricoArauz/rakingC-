@@ -51,12 +51,15 @@ public class TemporadaSchedulerService(
 
         if (activa is null) return;
 
+        var temporadaFinalizadaId = activa.Id;
+        
         activa.EstaDisponible = false;
         await db.SaveChangesAsync(ct);
         _log.LogInformation("Temporada {Id}-{Nombre} finalizada", activa.Id, activa.Nombre);
         
-        _log.LogInformation("Asignando insignias para la temporada finalizada {Id}-{Nombre}", activa.Id, activa.Nombre);
-        await dom.AsignarInsigniasTemporadaActivaAsync(ct);
+        _log.LogInformation("Asignando insignias para la temporada finalizada {Id}-{Nombre}", temporadaFinalizadaId, activa.Nombre);
+        
+        await dom.AsignarInsigniasTemporadaFinalizadaAsync(temporadaFinalizadaId, ct);
     }
 
     private async Task VerificarActivarAsync(AppDbContext db, CancellationToken ct)
