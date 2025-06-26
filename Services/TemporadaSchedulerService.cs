@@ -29,9 +29,8 @@ public class TemporadaSchedulerService(
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 var dom = scope.ServiceProvider.GetRequiredService<ITemporadaDomainService>();
 
-                await VerificarFinalizarAsync(db, ct);
+                await VerificarFinalizarAsync(db, dom, ct);
                 await VerificarActivarAsync(db, ct);
-                await VerificarInsigniasAsync(dom, ct);
             }
             catch (Exception ex)
             {
@@ -42,9 +41,7 @@ public class TemporadaSchedulerService(
         }
     }
 
-    /* ----------  lógica separada ---------- */
-
-    private async Task VerificarFinalizarAsync(AppDbContext db, CancellationToken ct)
+    private async Task VerificarFinalizarAsync(AppDbContext db, ITemporadaDomainService dom, CancellationToken ct)
     {
         var hoy = DateTime.UtcNow.Date;
         var activa = await db.Temporadas
@@ -57,6 +54,9 @@ public class TemporadaSchedulerService(
         activa.EstaDisponible = false;
         await db.SaveChangesAsync(ct);
         _log.LogInformation("Temporada {Id}-{Nombre} finalizada", activa.Id, activa.Nombre);
+        
+        _log.LogInformation("Asignando insignias para la temporada finalizada {Id}-{Nombre}", activa.Id, activa.Nombre);
+        await dom.AsignarInsigniasTemporadaActivaAsync(ct);
     }
 
     private async Task VerificarActivarAsync(AppDbContext db, CancellationToken ct)
@@ -75,10 +75,5 @@ public class TemporadaSchedulerService(
         siguiente.EstaDisponible = true;
         await db.SaveChangesAsync(ct);
         _log.LogInformation("Temporada {Id}-{Nombre} activada", siguiente.Id, siguiente.Nombre);
-    }
-
-    private static async Task VerificarInsigniasAsync(ITemporadaDomainService dom, CancellationToken ct)
-    {
-        await dom.AsignarInsigniasTemporadaActivaAsync(ct);
     }
 }
