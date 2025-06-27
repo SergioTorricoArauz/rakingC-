@@ -68,9 +68,11 @@ namespace RankingCyY.Controllers
             return Ok(descuento);
         }
 
-        public AppDbContext GetContext()
+        // Si tienes un método GetContext, necesita un atributo HTTP explícito y una ruta única
+        [HttpGet("context")]
+        public async Task<ActionResult<object>> GetContext()
         {
-            return context;
+            return Ok(context);
         }
 
         // Metodo para crear un nuevo descuento

@@ -9,6 +9,6 @@
         public int CantidadComprada { get; set; }
         public bool EstaDisponible { get; set; }
         public DateTime? FechaCreacion { get; set; }
-        public int Categoria { get; set; }
+        public required int Categoria { get; set; }
     }
 }

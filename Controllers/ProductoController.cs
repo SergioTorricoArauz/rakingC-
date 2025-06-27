@@ -10,12 +10,32 @@ namespace RankingCyY.Controllers
     [Route("[controller]")]
     public class ProductoController(AppDbContext context) : ControllerBase
     {
-        // Metodo para obtener todos los productos disponibles
+        // Metodo para obtener productos con paginación y filtros
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ProductoResponseDto>>> GetProductos()
+        public async Task<IActionResult> GetProductos(
+            [FromQuery] int? categoria,
+            [FromQuery] string? search,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            CancellationToken ct = default)
         {
-            var productos = await context.Productos
-                .Where(p => p.EstaDisponible)
+            if (page <= 0 || pageSize <= 0) return BadRequest("Parámetros de paginación inválidos.");
+
+            var query = context.Productos.AsNoTracking().Where(p => p.EstaDisponible);
+
+            if (categoria is not null)
+                query = query.Where(p => p.Categoria == categoria);
+
+            if (!string.IsNullOrWhiteSpace(search))
+                query = query.Where(p =>
+                    p.Nombre.Contains(search) || p.Descripcion.Contains(search));
+
+            var total = await query.CountAsync(ct);
+
+            var productos = await query
+                .OrderBy(p => p.Nombre)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(p => new ProductoResponseDto
                 {
                     Id = p.Id,
@@ -27,13 +47,11 @@ namespace RankingCyY.Controllers
                     EstaDisponible = p.EstaDisponible,
                     Categoria = p.Categoria
                 })
-                .ToListAsync();
-            if (productos == null || productos.Count == 0)
-            {
-                return NotFound("No se encontraron productos disponibles.");
-            }
-            return Ok(productos);
+                .ToListAsync(ct);
+
+            return Ok(new { total, productos });
         }
+
 
         // Metodo para obtener un producto por ID
         [HttpGet("{id}")]
