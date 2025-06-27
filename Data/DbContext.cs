@@ -14,5 +14,6 @@
         public DbSet<ClienteActividad> ClienteActividades { get; set; }
         public DbSet<Compras> Compras { get; set; }
         public DbSet<Productos> Productos { get; set; }
+        public DbSet<ProductosDescuento> ProductosDescuentos { get; set; }
     }
 }

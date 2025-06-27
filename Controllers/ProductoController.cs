@@ -10,6 +10,7 @@ namespace RankingCyY.Controllers
     [Route("[controller]")]
     public class ProductoController(AppDbContext context) : ControllerBase
     {
+        // Metodo para obtener todos los productos disponibles
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ProductoResponseDto>>> GetProductos()
         {
@@ -34,6 +35,7 @@ namespace RankingCyY.Controllers
             return Ok(productos);
         }
 
+        // Metodo para obtener un producto por ID
         [HttpGet("{id}")]
         public async Task<ActionResult<ProductoResponseDto>> GetProducto(int id)
         {
@@ -58,6 +60,7 @@ namespace RankingCyY.Controllers
             return Ok(producto);
         }
 
+        // Metodo para crear un nuevo producto
         [HttpPost]
         public async Task<ActionResult<ProductoResponseDto>> CreateProducto([FromBody] ProductoPostDto productoDto)
         {
