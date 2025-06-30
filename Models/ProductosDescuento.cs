@@ -18,6 +18,7 @@ namespace RankingCyY.Models
         [Column("fecha_fin")]
         public DateTime FechaFin { get; set; }
 
+        // Relación con Productos
         public required Productos Producto { get; set; }
 
     }

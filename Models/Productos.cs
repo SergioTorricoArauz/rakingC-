@@ -30,5 +30,11 @@ namespace RankingCyY.Models
         public DateTime? FechaCreacion { get; set; }
         [Column("categoria")]
         public int Categoria { get; set; } // 1 = IMPRESIONES, 2 = SESIONES, 3 = CONTRATOS
+
+        // Relación inversa con CarritoArticulos
+        public ICollection<CarritoArticulos> CarritoArticulos { get; set; } = [];
+
+        // Relación inversa con ProductosDescuento
+        public ICollection<ProductosDescuento> ProductosDescuentos { get; set; } = [];
     }
 }

@@ -12,11 +12,11 @@ namespace RankingCyY.Controllers
     {
         // Metodo para obtener los descuentos de los productos
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ProductosDescuentoResponse>>> GetDescuentos()
+        public async Task<ActionResult<IEnumerable<ProductosDescuentoResponseDto>>> GetDescuentos()
         {
             var descuentos = await context.ProductosDescuentos
                 .Include(pd => pd.Producto)
-                .Select(pd => new ProductosDescuentoResponse
+                .Select(pd => new ProductosDescuentoResponseDto
                 {
                     Id = pd.Id,
                     ProductoId = pd.ProductoId,
@@ -38,12 +38,12 @@ namespace RankingCyY.Controllers
 
         // Metodo para obtener un descuento por ID
         [HttpGet("{id}")]
-        public async Task<ActionResult<ProductosDescuentoResponse>> GetDescuentoById(int id)
+        public async Task<ActionResult<ProductosDescuentoResponseDto>> GetDescuentoById(int id)
         {
             var descuento = await context.ProductosDescuentos
                 .Include(pd => pd.Producto)
                 .Where(pd => pd.Id == id)
-                .Select(pd => new ProductosDescuentoResponse
+                .Select(pd => new ProductosDescuentoResponseDto
                 {
                     Id = pd.Id,
                     ProductoId = pd.ProductoId,
@@ -77,7 +77,7 @@ namespace RankingCyY.Controllers
 
         // Metodo para crear un nuevo descuento
         [HttpPost]
-        public async Task<ActionResult<ProductosDescuentoResponse>> CreateDescuento([FromBody] ProductosDescuentoPost request, AppDbContext context)
+        public async Task<ActionResult<ProductosDescuentoResponseDto>> CreateDescuento([FromBody] ProductosDescuentoPostDto request, AppDbContext context)
         {
 
             if (request == null)
@@ -98,7 +98,7 @@ namespace RankingCyY.Controllers
             context.ProductosDescuentos.Add(descuento);
             await context.SaveChangesAsync();
 
-            var response = new ProductosDescuentoResponse
+            var response = new ProductosDescuentoResponseDto
             {
                 Id = descuento.Id,
                 ProductoId = descuento.ProductoId,

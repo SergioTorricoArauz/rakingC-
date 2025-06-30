@@ -12,7 +12,8 @@
         public DbSet<Puntajes> Puntajes { get; set; }
         public DbSet<Actividades> Actividades { get; set; }
         public DbSet<ClienteActividad> ClienteActividades { get; set; }
-        public DbSet<Compras> Compras { get; set; }
+        public DbSet<Carrito> Carrito { get; set; }
+        public DbSet<CarritoArticulos> CarritoArticulos { get; set; }
         public DbSet<Productos> Productos { get; set; }
         public DbSet<ProductosDescuento> ProductosDescuentos { get; set; }
     }

@@ -1,6 +1,6 @@
 ﻿namespace RankingCyY.Models.dto
 {
-    public class ProductosDescuentoResponse
+    public class ProductosDescuentoResponseDto
     {
         public int Id { get; set; }
         public int ProductoId { get; set; }

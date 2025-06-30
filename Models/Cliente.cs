@@ -26,5 +26,8 @@ namespace RankingCyY.Models
 
         // Relación uno a muchos con ClienteActividades
         public ICollection<ClienteActividad>? ClienteActividades { get; set; }
+
+        // Relación inversa con Carrito
+        public ICollection<Carrito> Carrito { get; set; } = [];
     }
 }
