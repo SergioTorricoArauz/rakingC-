@@ -186,7 +186,7 @@ namespace RankingCyY.Controllers
             }
             catch (DbUpdateException ex)
             {
-                return StatusCode(500, "Error al crear el producto en la base de datos.");
+                return StatusCode(500, "Error al crear el producto en la base de datos." + ex.Message);
             }
         }
 

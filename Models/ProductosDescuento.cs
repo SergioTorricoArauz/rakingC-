@@ -17,6 +17,8 @@ namespace RankingCyY.Models
         public DateTime FechaInicio { get; set; }
         [Column("fecha_fin")]
         public DateTime FechaFin { get; set; }
+        [Column("cantidad_vendida_con_descuento")]
+        public int CantidadComprada { get; set; } = 0;
 
         // Relación con Productos
         public required Productos Producto { get; set; }

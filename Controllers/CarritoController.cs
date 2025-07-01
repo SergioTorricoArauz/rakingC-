@@ -49,14 +49,12 @@ namespace RankingCyY.Controllers
             if (producto == null || !producto.EstaDisponible)
                 return BadRequest("Producto no disponible.");
 
-            // Lógica para descuento vigente
             var descuento = producto.ProductosDescuentos
                 .FirstOrDefault(d => d.FechaInicio <= DateTime.UtcNow && d.FechaFin >= DateTime.UtcNow);
 
-            // Solo verificar límite de cupos si tiene descuento activo
             if (descuento != null)
             {
-                if (producto.CantidadComprada + dto.Cantidad > producto.CantidadMaximaClientes)
+                if (producto.CantidadComprada + dto.Cantidad > descuento.CantidadMaximaClientes)
                     return BadRequest("No hay suficientes cupos para este producto con descuento.");
             }
 
@@ -64,7 +62,6 @@ namespace RankingCyY.Controllers
                 ? producto.Precio - (producto.Precio * descuento.Descuento / 100)
                 : producto.Precio;
 
-            // Crear o actualizar articulo en el carrito
             var articulo = carrito.Articulos.FirstOrDefault(a => a.ProductoId == dto.ProductoId);
             if (articulo == null)
             {
@@ -79,20 +76,19 @@ namespace RankingCyY.Controllers
             }
             else
             {
-                // Solo verificar límite de cupos para actualización si tiene descuento activo
-                if (descuento != null && producto.CantidadComprada + articulo.Cantidad + dto.Cantidad > producto.CantidadMaximaClientes)
+                if (descuento != null && producto.CantidadComprada + articulo.Cantidad + dto.Cantidad > descuento.CantidadMaximaClientes)
                     return BadRequest("No hay suficientes cupos para este producto con descuento.");
-                    
+
                 articulo.Cantidad += dto.Cantidad;
                 articulo.PrecioUnitario = precioFinal;
             }
 
-            // Recalcular total
             carrito.Total = carrito.Articulos.Sum(a => a.Cantidad * a.PrecioUnitario);
 
             await context.SaveChangesAsync();
             return Ok("Producto agregado al carrito.");
         }
+
 
         // Elimina un producto del carrito
         [HttpDelete("quitar-producto/{carritoId}/{productoId}")]
@@ -116,7 +112,7 @@ namespace RankingCyY.Controllers
             return Ok("Producto eliminado del carrito.");
         }
 
-        // Obtener carrito y artículos
+        // Obtener carrito y artículos de clientes
         [HttpGet("{clienteId}")]
         public async Task<IActionResult> ObtenerCarrito(int clienteId)
         {
@@ -161,7 +157,6 @@ namespace RankingCyY.Controllers
             if (carrito == null)
                 return NotFound("Carrito no encontrado o ya pagado.");
 
-            // Validación final de cupos y disponibilidad
             foreach (var articulo in carrito.Articulos)
             {
                 var producto = await context.Productos
@@ -171,27 +166,22 @@ namespace RankingCyY.Controllers
                 if (producto == null || !producto.EstaDisponible)
                     return BadRequest($"El producto {articulo.Producto.Nombre} ya no está disponible.");
 
-                // Verificar si hay descuento activo
                 var descuento = producto.ProductosDescuentos
                     .FirstOrDefault(d => d.FechaInicio <= DateTime.UtcNow && d.FechaFin >= DateTime.UtcNow);
 
-                // Validar límites según si tiene descuento o no
                 if (descuento != null)
                 {
-                    if (producto.CantidadComprada + articulo.Cantidad > descuento.CantidadMaximaClientes)
+                    if (producto.CantidadComprada + articulo.Cantidad > descuento.CantidadMaximaClientes) // Usar descuento.CantidadMaximaClientes
                         return BadRequest($"No hay suficientes cupos para el producto {producto.Nombre} con descuento.");
                 }
 
-                // Actualizar cantidad comprada
                 producto.CantidadComprada += articulo.Cantidad;
 
-                // Si tiene descuento, usar el límite del descuento
                 if (descuento != null)
                 {
                     if (producto.CantidadComprada >= descuento.CantidadMaximaClientes)
                         producto.EstaDisponible = false;
                 }
-                // Si no tiene descuento, usar el límite del producto
                 else if (producto.CantidadComprada >= producto.CantidadMaximaClientes)
                 {
                     producto.EstaDisponible = false;
@@ -200,7 +190,7 @@ namespace RankingCyY.Controllers
 
             carrito.Estado = "FINALIZADO";
 
-            // Aquí puedes asignar puntos al cliente si quieres (por cada compra)
+            // Logica para agregar puntos al cliente
             // var cliente = await context.Clientes.FindAsync(carrito.ClienteId);
             // cliente.PuntosGenerales += lógica de puntos;
 

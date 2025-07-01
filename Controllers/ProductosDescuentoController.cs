@@ -24,6 +24,7 @@ namespace RankingCyY.Controllers
                     Descuento = pd.Descuento,
                     FechaInicio = pd.FechaInicio,
                     FechaFin = pd.FechaFin,
+                    CantidadComprada = pd.CantidadComprada,
                     // Datos del producto desde la relación
                     Nombre = pd.Producto.Nombre,
                     Descripcion = pd.Producto.Descripcion,
@@ -51,6 +52,7 @@ namespace RankingCyY.Controllers
                     Descuento = pd.Descuento,
                     FechaInicio = pd.FechaInicio,
                     FechaFin = pd.FechaFin,
+                    CantidadComprada = pd.CantidadComprada,
                     // Datos del producto desde la relación
                     Nombre = pd.Producto.Nombre,
                     Descripcion = pd.Producto.Descripcion,
@@ -68,46 +70,78 @@ namespace RankingCyY.Controllers
             return Ok(descuento);
         }
 
-        // Si tienes un método GetContext, necesita un atributo HTTP explícito y una ruta única
+        // Corregir el método GetContext (Problema 1)
         [HttpGet("context")]
-        public async Task<ActionResult<object>> GetContext()
+        public ActionResult<object> GetContext() // Removido async ya que no usa await
         {
-            return Ok(context);
+            return Ok("Context information"); // Cambiar por información útil o eliminar el método
         }
 
         // Metodo para crear un nuevo descuento
         [HttpPost]
-        public async Task<ActionResult<ProductosDescuentoResponseDto>> CreateDescuento([FromBody] ProductosDescuentoPostDto request, AppDbContext context)
+        public async Task<ActionResult<ProductosDescuentoResponseDto>> CreateDescuento([FromBody] ProductosDescuentoPostDto request)
         {
-
             if (request == null)
             {
                 return BadRequest("Los datos del descuento son inválidos.");
             }
 
-            var descuento = new ProductosDescuento
+            // Validar que el producto existe
+            var producto = await context.Productos.FindAsync(request.ProductoId);
+            if (producto == null)
             {
-                ProductoId = request.ProductoId,
-                CantidadMaximaClientes = request.CantidadMaximaClientes,
-                Descuento = request.Descuento,
-                FechaInicio = request.FechaInicio,
-                FechaFin = request.FechaFin,
-                // Asignar el producto relacionado
-                Producto = await context.Productos.FindAsync(request.ProductoId)
-            };
-            context.ProductosDescuentos.Add(descuento);
-            await context.SaveChangesAsync();
+                return BadRequest("El producto especificado no existe.");
+            }
 
-            var response = new ProductosDescuentoResponseDto
+            // Validaciones adicionales
+            if (request.Descuento <= 0 || request.Descuento > 100)
             {
-                Id = descuento.Id,
-                ProductoId = descuento.ProductoId,
-                CantidadMaximaClientes = descuento.CantidadMaximaClientes,
-                Descuento = descuento.Descuento,
-                FechaInicio = descuento.FechaInicio,
-                FechaFin = descuento.FechaFin,
-            };
-            return CreatedAtAction(nameof(GetDescuentoById), new { id = response.Id }, response);
+                return BadRequest("El descuento debe estar entre 1 y 100.");
+            }
+
+            if (request.FechaInicio >= request.FechaFin)
+            {
+                return BadRequest("La fecha de inicio debe ser anterior a la fecha de fin.");
+            }
+
+            try
+            {
+                var descuento = new ProductosDescuento
+                {
+                    ProductoId = request.ProductoId,
+                    CantidadMaximaClientes = request.CantidadMaximaClientes,
+                    Descuento = request.Descuento,
+                    FechaInicio = request.FechaInicio.ToUniversalTime(), // Convertir a UTC
+                    FechaFin = request.FechaFin.ToUniversalTime(), // Convertir a UTC
+                    CantidadComprada = 0, // Siempre iniciar en 0
+                    Producto = producto
+                };
+
+                context.ProductosDescuentos.Add(descuento);
+                await context.SaveChangesAsync();
+
+                var response = new ProductosDescuentoResponseDto
+                {
+                    Id = descuento.Id,
+                    ProductoId = descuento.ProductoId,
+                    CantidadMaximaClientes = descuento.CantidadMaximaClientes,
+                    Descuento = descuento.Descuento,
+                    FechaInicio = descuento.FechaInicio,
+                    FechaFin = descuento.FechaFin,
+                    CantidadComprada = descuento.CantidadComprada,
+                    Nombre = producto.Nombre,
+                    Descripcion = producto.Descripcion,
+                    Precio = producto.Precio,
+                    EstaDisponible = producto.EstaDisponible,
+                    Categoria = producto.Categoria
+                };
+
+                return CreatedAtAction(nameof(GetDescuentoById), new { id = response.Id }, response);
+            }
+            catch (DbUpdateException)
+            {
+                return StatusCode(500, "Error al crear el descuento en la base de datos.");
+            }
         }
     }
 }

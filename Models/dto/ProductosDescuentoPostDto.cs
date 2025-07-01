@@ -7,6 +7,7 @@
         public required decimal Descuento { get; set; }
         public required DateTime FechaInicio { get; set; }
         public required DateTime FechaFin { get; set; }
+        public int CantidadComprada { get; set; } = 0;
 
     }
 }
