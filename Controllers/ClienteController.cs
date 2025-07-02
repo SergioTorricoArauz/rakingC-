@@ -39,8 +39,9 @@ namespace RankingCyY.Controllers
                 clientesFiltrados = ClienteFilters.FilterBySuperUser(clientesFiltrados, isSuperUser);
             }
 
+            // 7. Pattern Matching para ordenar clientes
             clientesFiltrados = ClienteFilters.SortBy(clientesFiltrados, sortBy ?? "puntos");
-
+            // 3. Inmutable List
             var clienteDtos = ClienteMappers.ToResponseDtos(clientesFiltrados);
             
             return Ok(clienteDtos);
@@ -87,6 +88,7 @@ namespace RankingCyY.Controllers
         [HttpPost("register")]
         public async Task<ActionResult<ClienteResponseDto>> PostCliente(ClientePostDto clienteDto)
         {
+            // 4. Funcion pura para validar cliente
             var (isValid, errorMessage) = ClienteValidators.ValidateCliente(
                 clienteDto.Nombre, 
                 clienteDto.Email, 
@@ -97,6 +99,7 @@ namespace RankingCyY.Controllers
                 return BadRequest(errorMessage);
 
             bool emailExists = await context.Clientes
+                // 2. Funcion Lambda para validar email
                 .AnyAsync(c => c.Email.Equals(clienteDto.Email, StringComparison.CurrentCultureIgnoreCase));
             
             if (emailExists)
@@ -180,9 +183,11 @@ namespace RankingCyY.Controllers
         {
             var clientes = await context.Clientes.ToListAsync();
 
+            // 6. Usar closures para filtros avanzados
             var pointsFilter = ClienteClosures.CreatePointsFilter(minPoints);
             var domainValidator = ClienteClosures.CreateEmailDomainValidator(domain);
 
+            // 1. Usar closures para filtrar clientes
             var clientesFiltrados = clientes
                 .Where(pointsFilter)
                 .Where(c => domainValidator(c.Email))

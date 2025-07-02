@@ -32,7 +32,7 @@ namespace RankingCyY.Utils
             return query;
         }
         
-        // FUNCIÓN PURA: Ordenamiento usando pattern matching (C# 12)
+        // FUNCIÓN PURA: Ordenamiento usando pattern matching
         public static IEnumerable<Cliente> SortBy(IEnumerable<Cliente> clientes, string sortBy) =>
             sortBy.ToLower() switch
             {
