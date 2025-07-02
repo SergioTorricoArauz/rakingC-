@@ -52,6 +52,9 @@ builder.Services.Configure<SchedulerOptions>(
 builder.Services.AddScoped<ITemporadaDomainService, TemporadaDomainService>();
 builder.Services.AddHostedService<TemporadaSchedulerService>();
 
+// Servicio para limpiar historias expiradas
+builder.Services.AddHostedService<HistoriaCleanupService>();
+
 // ────────────────────────────────────────────────────────────────────────────────
 // 5) API Controllers & Swagger
 // ────────────────────────────────────────────────────────────────────────────────
@@ -73,6 +76,8 @@ if (app.Environment.IsDevelopment())
 app.UseCors(AngularCorsPolicy);
 
 app.UseHttpsRedirection();
+
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();

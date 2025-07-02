@@ -16,5 +16,10 @@
         public DbSet<CarritoArticulos> CarritoArticulos { get; set; }
         public DbSet<Productos> Productos { get; set; }
         public DbSet<ProductosDescuento> ProductosDescuentos { get; set; }
+        public DbSet<Historia> Historias { get; set; }
+        public DbSet<HistoriaImagen> HistoriaImagenes { get; set; }
+        public DbSet<HistoriaComentario> HistoriaComentarios { get; set; }
+        public DbSet<ComentarioLike> ComentarioLikes { get; set; }
+
     }
 }
