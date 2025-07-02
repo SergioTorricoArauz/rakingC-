@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RankingCyY.Data;
 using RankingCyY.Models;
 using RankingCyY.Models.dto;
-using System.Net.Mail;
+using RankingCyY.Utils;
 
 namespace RankingCyY.Controllers
 {
@@ -11,53 +11,54 @@ namespace RankingCyY.Controllers
     [Route("[controller]")]
     public class ClienteController(AppDbContext context) : ControllerBase
     {
-
-        // Obtener todos los clientes desde la base de datos
+        // GET: Obtener todos los clientes con filtros funcionales
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ClienteResponseDto>>> GetClientes()
+        public async Task<ActionResult<IEnumerable<ClienteResponseDto>>> GetClientes(
+            [FromQuery] string? sortBy = "puntos",
+            [FromQuery] int? minPoints = null,
+            [FromQuery] int? maxPoints = null,
+            [FromQuery] bool? isSuperUser = null)
         {
-            var clientes = await context.Clientes
-                .OrderByDescending(c => c.PuntosGenerales)
-                .ToListAsync();
+            var clientes = await context.Clientes.ToListAsync();
 
-            if (clientes == null || clientes.Count == 0)
-            {
+            if (!clientes.Any())
                 return NotFound("No se encontraron clientes.");
-            }
-            var clienteDtos = clientes.Select(c => new ClienteResponseDto
+
+            var clientesFiltrados = clientes.AsEnumerable();
+
+            if (minPoints.HasValue || maxPoints.HasValue)
             {
-                Id = c.Id,
-                Nombre = c.Nombre,
-                Email = c.Email,
-                PuntosGenerales = c.PuntosGenerales,
-                FechaRegistro = c.FechaRegistro,
-                IsSuperUser = c.IsSuperUser
-            }).ToList();
+                clientesFiltrados = ClienteFilters.FilterByPointsRange(
+                    clientesFiltrados, 
+                    minPoints ?? 0, 
+                    maxPoints ?? int.MaxValue);
+            }
+
+            if (isSuperUser.HasValue)
+            {
+                clientesFiltrados = ClienteFilters.FilterBySuperUser(clientesFiltrados, isSuperUser);
+            }
+
+            clientesFiltrados = ClienteFilters.SortBy(clientesFiltrados, sortBy ?? "puntos");
+
+            var clienteDtos = ClienteMappers.ToResponseDtos(clientesFiltrados);
+            
             return Ok(clienteDtos);
         }
 
-        // Obtener un cliente por ID
+        // GET: Obtener cliente por ID
         [HttpGet("{id}")]
         public async Task<ActionResult<ClienteResponseDto>> GetCliente(int id)
         {
             var cliente = await context.Clientes.FindAsync(id);
             if (cliente == null)
-            {
                 return NotFound($"Cliente con ID {id} no encontrado.");
-            }
-            var clienteDto = new ClienteResponseDto
-            {
-                Id = cliente.Id,
-                Nombre = cliente.Nombre,
-                Email = cliente.Email,
-                PuntosGenerales = cliente.PuntosGenerales,
-                FechaRegistro = cliente.FechaRegistro,
-                IsSuperUser = cliente.IsSuperUser
-            };
+
+            var clienteDto = ClienteMappers.ToResponseDto(cliente);
             return Ok(clienteDto);
         }
 
-        // Obtener insignias de un cliente
+        // GET: Obtener insignias de un cliente
         [HttpGet("{clienteId}/insignias")]
         public async Task<ActionResult<IEnumerable<InsigniaResponseDto>>> GetInsigniasCliente(int clienteId)
         {
@@ -66,10 +67,8 @@ namespace RankingCyY.Controllers
                 .Include(ci => ci.Insignia)
                 .ToListAsync();
 
-            if (clienteInsignias == null || !clienteInsignias.Any())
-            {
+            if (!clienteInsignias.Any())
                 return NotFound("El cliente no tiene insignias.");
-            }
 
             var insigniasDto = clienteInsignias.Select(ci => new InsigniaResponseDto
             {
@@ -84,62 +83,57 @@ namespace RankingCyY.Controllers
             return Ok(insigniasDto);
         }
 
-
-        // Crear un nuevo cliente
+        // POST: Crear un nuevo cliente con validaciones funcionales puras
         [HttpPost("register")]
-        public async Task<ActionResult<IEnumerable<Cliente>>> PostCliente(ClientePostDto clienteDto)
+        public async Task<ActionResult<ClienteResponseDto>> PostCliente(ClientePostDto clienteDto)
         {
-            // Validación de correo electrónico
-            try
-            {
-                var mail = new MailAddress(clienteDto.Email);
-            }
-            catch
-            {
-                return BadRequest("El correo electrónico no es válido.");
-            }
+            var (isValid, errorMessage) = ClienteValidators.ValidateCliente(
+                clienteDto.Nombre, 
+                clienteDto.Email, 
+                clienteDto.Password, 
+                clienteDto.PuntosGenerales);
 
-            // Validar si el correo ya existe
+            if (!isValid)
+                return BadRequest(errorMessage);
+
             bool emailExists = await context.Clientes
-                .AnyAsync(c => c.Email.ToLower() == clienteDto.Email.ToLower());
+                .AnyAsync(c => c.Email.Equals(clienteDto.Email, StringComparison.CurrentCultureIgnoreCase));
+            
             if (emailExists)
-            {
                 return Conflict("El correo electrónico ya está registrado.");
-            }
 
-            var cliente = new Cliente
-            {
-                Nombre = clienteDto.Nombre,
-                Email = clienteDto.Email,
-                Password = clienteDto.Password,
-                PuntosGenerales = clienteDto.PuntosGenerales,
-                FechaRegistro = DateTime.UtcNow.Date
-            };
+            var cliente = ClienteMappers.FromPostDto(clienteDto);
+            
             context.Clientes.Add(cliente);
             await context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetClientes), new { id = cliente.Id }, cliente);
+            
+            var responseDto = ClienteMappers.ToResponseDto(cliente);
+            return CreatedAtAction(nameof(GetCliente), new { id = cliente.Id }, responseDto);
         }
 
-        // Agregar puntos a un cliente
+        // POST: Sumar puntos usando lógica funcional
         [HttpPost("{clienteId}/sumarPuntos")]
         public async Task<IActionResult> SumarPuntosGenerales(int clienteId, [FromBody] int puntos)
         {
             var cliente = await context.Clientes.FindAsync(clienteId);
-
             if (cliente == null)
-            {
                 return NotFound("Cliente no encontrado.");
+
+            var puntosConBonificacion = InsigniaRules.CalculatePuntosConBonificacion(puntos, cliente.IsSuperUser);
+            cliente.PuntosGenerales += puntosConBonificacion;
+
+            if (!cliente.IsSuperUser && InsigniaRules.MereceSuperUser(cliente.PuntosGenerales, cliente.FechaRegistro))
+            {
+                cliente.IsSuperUser = true;
             }
 
-            // Sumar los puntos a los puntos generales
-            cliente.PuntosGenerales += puntos;
-
-            // Guardar los cambios
             await context.SaveChangesAsync();
 
-            return Ok(cliente);
+            var responseDto = ClienteMappers.ToResponseDto(cliente);
+            return Ok(responseDto);
         }
 
+        // POST: Asignar insignias usando reglas funcionales puras
         [HttpPost("{clienteId}/asignarInsignias")]
         public async Task<IActionResult> AsignarInsignias(int clienteId)
         {
@@ -147,55 +141,65 @@ namespace RankingCyY.Controllers
             if (cliente == null)
                 return NotFound("Cliente no encontrado.");
 
-            var reglasInsignias = new List<(string Nombre, int PuntosMinimos)>
-    {
-        ("Cliente Plata", 100),
-        ("Cliente Oro", 200),
-        ("Cliente Premium", 300)
-    };
-
+            var insigniasElegibles = InsigniaRules.GetInsigniasElegibles(cliente.PuntosGenerales);
             var insigniasOtorgadas = new List<string>();
 
-            foreach (var regla in reglasInsignias)
+            foreach (var nombreInsignia in insigniasElegibles)
             {
-                if (cliente.PuntosGenerales >= regla.PuntosMinimos)
+                var insignia = await context.Insignias
+                    .FirstOrDefaultAsync(i => i.Nombre == nombreInsignia);
+
+                if (insignia != null &&
+                    !await context.ClienteInsignias
+                        .AnyAsync(ci => ci.ClienteId == clienteId && ci.InsigniaId == insignia.Id))
                 {
-                    var insignia = await context.Insignias
-                        .FirstOrDefaultAsync(i => i.Nombre == regla.Nombre);
-
-                    if (insignia != null &&
-                        !await context.ClienteInsignias
-                            .AnyAsync(ci => ci.ClienteId == clienteId && ci.InsigniaId == insignia.Id))
+                    var clienteInsignia = new ClienteInsignia
                     {
-                        // Asignar la insignia
-                        var clienteInsignia = new ClienteInsignia
-                        {
-                            ClienteId = clienteId,
-                            InsigniaId = insignia.Id,
-                            FechaOtorgada = DateTime.UtcNow
-                        };
+                        ClienteId = clienteId,
+                        InsigniaId = insignia.Id,
+                        FechaOtorgada = DateTime.UtcNow
+                    };
 
-                        context.ClienteInsignias.Add(clienteInsignia);
-                        insigniasOtorgadas.Add(regla.Nombre);
-                    }
+                    context.ClienteInsignias.Add(clienteInsignia);
+                    insigniasOtorgadas.Add(nombreInsignia);
                 }
             }
-            if (insigniasOtorgadas.Count == 0)
+
+            if (!insigniasOtorgadas.Any())
                 return BadRequest("El cliente no cumple con los requisitos para nuevas insignias.");
 
             await context.SaveChangesAsync();
             return Ok($"Insignias otorgadas: {string.Join(", ", insigniasOtorgadas)}");
         }
 
-        // Eliminar cliente
+        // GET: Endpoint para demostrar closures
+        [HttpGet("filtros-avanzados")]
+        public async Task<ActionResult<IEnumerable<ClienteResponseDto>>> GetClientesConFiltrosAvanzados(
+            [FromQuery] int minPoints = 100,
+            [FromQuery] string domain = "gmail.com")
+        {
+            var clientes = await context.Clientes.ToListAsync();
+
+            var pointsFilter = ClienteClosures.CreatePointsFilter(minPoints);
+            var domainValidator = ClienteClosures.CreateEmailDomainValidator(domain);
+
+            var clientesFiltrados = clientes
+                .Where(pointsFilter)
+                .Where(c => domainValidator(c.Email))
+                .ToList();
+
+            var clienteDtos = ClienteMappers.ToResponseDtos(clientesFiltrados);
+            return Ok(clienteDtos);
+        }
+
+        // DELETE: Eliminar cliente
         [HttpDelete("delete")]
         public async Task<IActionResult> DeleteCliente(int id)
         {
             var cliente = await context.Clientes.FindAsync(id);
             if (cliente == null)
-            {
                 return NotFound($"Cliente con ID {id} no encontrado.");
-            }
+
             context.Clientes.Remove(cliente);
             await context.SaveChangesAsync();
             return NoContent();

@@ -13,6 +13,7 @@ namespace RankingCyY.Controllers
         private readonly string[] _extensionesPermitidas = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
         private const long _tamañoMaximo = 5 * 1024 * 1024; // 5MB
 
+        // Crea una nueva historia
         [HttpPost("crear")]
         public async Task<IActionResult> CrearHistoria([FromForm] HistoriaPostDto dto)
         {
@@ -22,14 +23,12 @@ namespace RankingCyY.Controllers
             if (dto.Imagenes.Count > 10)
                 return BadRequest("Máximo 10 imágenes por historia");
 
-            // Validar cliente existe
             var cliente = await context.Clientes.FindAsync(dto.ClienteId);
             if (cliente == null)
                 return BadRequest("Cliente no encontrado");
 
             try
             {
-                // Crear historia
                 var historia = new Historia
                 {
                     ClienteId = dto.ClienteId,
@@ -43,7 +42,6 @@ namespace RankingCyY.Controllers
                 context.Historias.Add(historia);
                 await context.SaveChangesAsync();
 
-                // Subir imágenes
                 var uploadsPath = Path.Combine(environment.WebRootPath, "uploads", "historys");
                 if (!Directory.Exists(uploadsPath))
                     Directory.CreateDirectory(uploadsPath);
@@ -52,7 +50,6 @@ namespace RankingCyY.Controllers
                 {
                     var imagen = dto.Imagenes[i];
                     
-                    // Validar imagen
                     var extension = Path.GetExtension(imagen.FileName).ToLowerInvariant();
                     if (!_extensionesPermitidas.Contains(extension))
                         continue;
@@ -60,7 +57,6 @@ namespace RankingCyY.Controllers
                     if (imagen.Length > _tamañoMaximo)
                         continue;
 
-                    // Guardar imagen
                     var nombreArchivo = $"{historia.Id}_{i}_{Guid.NewGuid()}{extension}";
                     var rutaCompleta = Path.Combine(uploadsPath, nombreArchivo);
 
@@ -69,7 +65,6 @@ namespace RankingCyY.Controllers
                         await imagen.CopyToAsync(stream);
                     }
 
-                    // Guardar en BD
                     var historiaImagen = new HistoriaImagen
                     {
                         HistoriaId = historia.Id,
@@ -91,6 +86,7 @@ namespace RankingCyY.Controllers
             }
         }
 
+        // Obtiene todas las historias activas
         [HttpGet("activas")]
         public async Task<IActionResult> ObtenerHistoriasActivas([FromQuery] int? clienteActualId = null)
         {
@@ -139,6 +135,7 @@ namespace RankingCyY.Controllers
             return Ok(historias);
         }
 
+        // Obtiene una historia por ID
         [HttpGet("{id}")]
         public async Task<IActionResult> ObtenerHistoria(int id, [FromQuery] int? clienteActualId = null)
         {
@@ -189,6 +186,7 @@ namespace RankingCyY.Controllers
             return Ok(response);
         }
 
+        // Comentar una historia
         [HttpPost("comentar")]
         public async Task<IActionResult> ComentarHistoria([FromBody] ComentarioPostDto dto)
         {
@@ -218,6 +216,7 @@ namespace RankingCyY.Controllers
             return Ok(new { success = true, comentarioId = comentario.Id });
         }
 
+        // Dar like a un comentario
         [HttpPost("like-comentario/{comentarioId}")]
         public async Task<IActionResult> DarLikeComentario(int comentarioId, [FromQuery] int clienteId)
         {
@@ -233,14 +232,12 @@ namespace RankingCyY.Controllers
 
             if (yaLeDioLike)
             {
-                // Quitar like
                 var like = comentario.ComentarioLikes.First(l => l.ClienteId == clienteId);
                 context.ComentarioLikes.Remove(like);
                 comentario.Likes--;
             }
             else
             {
-                // Dar like
                 var like = new ComentarioLike
                 {
                     ComentarioId = comentarioId,
@@ -252,7 +249,6 @@ namespace RankingCyY.Controllers
 
             await context.SaveChangesAsync();
             
-            // Recargar el comentario para obtener el estado actualizado
             var comentarioActualizado = await context.HistoriaComentarios
                 .Include(c => c.Cliente)
                 .Include(c => c.ComentarioLikes)
@@ -275,6 +271,7 @@ namespace RankingCyY.Controllers
             });
         }
 
+        // Obtener un comentario específico
         [HttpGet("comentario/{comentarioId}")]
         public async Task<IActionResult> ObtenerComentario(int comentarioId, [FromQuery] int? clienteActualId = null)
         {
