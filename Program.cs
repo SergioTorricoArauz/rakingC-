@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using RankingCyY.Data;
 using RankingCyY.Domain;    // ITemporadaDomainService / TemporadaDomainService
 using RankingCyY.Services;  // TemporadaSchedulerService / SchedulerOptions
-using RankingCyY.Hubs;      // HistoriaHub
+using RankingCyY.Hubs;      // HistoriaHub, CarritoHub
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -90,7 +90,8 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Mapear el Hub de SignalR
+// Mapear los Hubs de SignalR
 app.MapHub<HistoriaHub>("/historiahub");
+app.MapHub<CarritoHub>("/carritohub");
 
 app.Run();

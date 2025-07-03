@@ -1,14 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
 using RankingCyY.Data;
 using RankingCyY.Models;
 using RankingCyY.Models.dto;
+using RankingCyY.Hubs;
 
 namespace RankingCyY.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class CarritoController(AppDbContext context) : ControllerBase
+    public class CarritoController(AppDbContext context, IHubContext<CarritoHub> hubContext) : ControllerBase
     {
 
         // Crea un carrito vacío para el cliente si no tiene uno ACTIVO.
@@ -28,6 +30,11 @@ namespace RankingCyY.Controllers
             };
             context.Carrito.Add(carrito);
             await context.SaveChangesAsync();
+
+            // Notificar al cliente específico sobre el nuevo carrito
+            await hubContext.Clients.Group($"Carrito_{dto.ClienteId}")
+                .SendAsync("CarritoCreado", carrito.Id);
+
             return Ok(carrito.Id);
         }
 
@@ -37,6 +44,7 @@ namespace RankingCyY.Controllers
         {
             var carrito = await context.Carrito
                 .Include(c => c.Articulos)
+                .ThenInclude(a => a.Producto)
                 .FirstOrDefaultAsync(c => c.Id == dto.CarritoId);
 
             if (carrito == null || carrito.Estado != "ACTIVO")
@@ -86,6 +94,14 @@ namespace RankingCyY.Controllers
             carrito.Total = carrito.Articulos.Sum(a => a.Cantidad * a.PrecioUnitario);
 
             await context.SaveChangesAsync();
+
+            // Crear el carrito actualizado para enviar via SignalR
+            var carritoActualizado = await ObtenerCarritoDto(carrito.ClienteId);
+            
+            // Notificar al cliente específico sobre la actualización del carrito
+            await hubContext.Clients.Group($"Carrito_{carrito.ClienteId}")
+                .SendAsync("CarritoActualizado", carritoActualizado);
+
             return Ok("Producto agregado al carrito.");
         }
 
@@ -95,11 +111,13 @@ namespace RankingCyY.Controllers
         public async Task<IActionResult> QuitarProducto(int carritoId, int productoId)
         {
             var articulo = await context.CarritoArticulos
+                .Include(a => a.Carrito)
                 .FirstOrDefaultAsync(a => a.CarritoId == carritoId && a.ProductoId == productoId);
 
             if (articulo == null)
                 return NotFound("Artículo no encontrado en el carrito.");
 
+            var clienteId = articulo.Carrito.ClienteId;
             context.CarritoArticulos.Remove(articulo);
 
             var carrito = await context.Carrito.Include(c => c.Articulos)
@@ -109,6 +127,14 @@ namespace RankingCyY.Controllers
                     .Sum(a => a.Cantidad * a.PrecioUnitario);
 
             await context.SaveChangesAsync();
+
+            // Crear el carrito actualizado para enviar via SignalR
+            var carritoActualizado = await ObtenerCarritoDto(clienteId);
+            
+            // Notificar al cliente específico sobre la actualización del carrito
+            await hubContext.Clients.Group($"Carrito_{clienteId}")
+                .SendAsync("CarritoActualizado", carritoActualizado);
+
             return Ok("Producto eliminado del carrito.");
         }
 
@@ -116,15 +142,25 @@ namespace RankingCyY.Controllers
         [HttpGet("{clienteId}")]
         public async Task<IActionResult> ObtenerCarrito(int clienteId)
         {
+            var carritoDto = await ObtenerCarritoDto(clienteId);
+            if (carritoDto == null)
+                return NotFound("No tienes un carrito activo.");
+
+            return Ok(carritoDto);
+        }
+
+        // Método helper para obtener el DTO del carrito
+        private async Task<CarritoResponseDto?> ObtenerCarritoDto(int clienteId)
+        {
             var carrito = await context.Carrito
                 .Include(c => c.Articulos)
                 .ThenInclude(a => a.Producto)
                 .FirstOrDefaultAsync(c => c.ClienteId == clienteId && c.Estado == "ACTIVO");
 
             if (carrito == null)
-                return NotFound("No tienes un carrito activo.");
+                return null;
 
-            var carritoDto = new CarritoResponseDto
+            return new CarritoResponseDto
             {
                 Id = carrito.Id,
                 ClienteId = carrito.ClienteId,
@@ -141,8 +177,6 @@ namespace RankingCyY.Controllers
                     SubTotal = a.Cantidad * a.PrecioUnitario
                 }).ToList()
             };
-
-            return Ok(carritoDto);
         }
 
         // Finalizar/Pagar carrito
@@ -189,12 +223,12 @@ namespace RankingCyY.Controllers
             }
 
             carrito.Estado = "FINALIZADO";
-
-            // Logica para agregar puntos al cliente
-            // var cliente = await context.Clientes.FindAsync(carrito.ClienteId);
-            // cliente.PuntosGenerales += lógica de puntos;
-
             await context.SaveChangesAsync();
+
+            // Notificar al cliente específico sobre la finalización del carrito
+            await hubContext.Clients.Group($"Carrito_{carrito.ClienteId}")
+                .SendAsync("CarritoFinalizado", carritoId);
+
             return Ok("Compra realizada con éxito.");
         }
 
@@ -242,10 +276,14 @@ namespace RankingCyY.Controllers
             carrito.Total = 0;
             await context.SaveChangesAsync();
 
+            // Crear el carrito vacío para enviar via SignalR
+            var carritoVacio = await ObtenerCarritoDto(carrito.ClienteId);
+            
+            // Notificar al cliente específico sobre el vaciado del carrito
+            await hubContext.Clients.Group($"Carrito_{carrito.ClienteId}")
+                .SendAsync("CarritoVaciado", carritoVacio);
+
             return Ok("Carrito vaciado.");
         }
-
-
-
     }
 }
