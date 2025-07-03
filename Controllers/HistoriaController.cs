@@ -1,14 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
 using RankingCyY.Data;
 using RankingCyY.Models;
 using RankingCyY.Models.dto;
+using RankingCyY.Hubs;
 
 namespace RankingCyY.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class HistoriaController(AppDbContext context, IWebHostEnvironment environment) : ControllerBase
+    public class HistoriaController(AppDbContext context, IWebHostEnvironment environment, IHubContext<HistoriaHub> hubContext) : ControllerBase
     {
         private readonly string[] _extensionesPermitidas = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
         private const long _tamañoMaximo = 5 * 1024 * 1024; // 5MB
@@ -77,6 +79,33 @@ namespace RankingCyY.Controllers
                 }
 
                 await context.SaveChangesAsync();
+
+                // Notificar a todos los clientes conectados sobre la nueva historia
+                var historiaResponse = new HistoriaResponseDto
+                {
+                    Id = historia.Id,
+                    ClienteId = historia.ClienteId,
+                    NombreCliente = cliente.Nombre,
+                    Descripcion = historia.Descripcion,
+                    FechaCreacion = historia.FechaCreacion,
+                    FechaExpiracion = historia.FechaExpiracion,
+                    EstaActiva = historia.EstaActiva,
+                    PermiteComentarios = historia.PermiteComentarios,
+                    PuedeComentarAun = historia.PermiteComentarios && historia.FechaExpiracion > DateTime.UtcNow,
+                    Imagenes = await context.HistoriaImagenes
+                        .Where(i => i.HistoriaId == historia.Id)
+                        .OrderBy(i => i.Orden)
+                        .Select(i => new HistoriaImagenDto
+                        {
+                            Id = i.Id,
+                            NombreArchivo = i.NombreArchivo,
+                            Url = $"{Request.Scheme}://{Request.Host}{i.RutaArchivo}",
+                            Orden = i.Orden
+                        }).ToListAsync(),
+                    Comentarios = []
+                };
+
+                await hubContext.Clients.All.SendAsync("NuevaHistoria", historiaResponse);
 
                 return Ok(new { success = true, historiaId = historia.Id });
             }
@@ -213,7 +242,23 @@ namespace RankingCyY.Controllers
             context.HistoriaComentarios.Add(comentario);
             await context.SaveChangesAsync();
 
-            return Ok(new { success = true, comentarioId = comentario.Id });
+            // Crear el DTO del comentario para enviar en tiempo real
+            var comentarioDto = new HistoriaComentarioDto
+            {
+                Id = comentario.Id,
+                ClienteId = comentario.ClienteId,
+                NombreCliente = cliente.Nombre,
+                Comentario = comentario.Comentario,
+                FechaComentario = comentario.FechaComentario,
+                Likes = 0,
+                YaLeDiLike = false
+            };
+
+            // Notificar a todos los clientes conectados al grupo de esta historia
+            await hubContext.Clients.Group($"Historia_{dto.HistoriaId}")
+                .SendAsync("NuevoComentario", dto.HistoriaId, comentarioDto);
+
+            return Ok(new { success = true, comentarioId = comentario.Id, comentario = comentarioDto });
         }
 
         // Dar like a un comentario
@@ -264,6 +309,10 @@ namespace RankingCyY.Controllers
                 Likes = comentarioActualizado.Likes,
                 YaLeDiLike = comentarioActualizado.ComentarioLikes.Any(l => l.ClienteId == clienteId)
             };
+
+            // Notificar a todos los clientes conectados al grupo de esta historia sobre el cambio de likes
+            await hubContext.Clients.Group($"Historia_{comentario.HistoriaId}")
+                .SendAsync("ComentarioLikeActualizado", comentarioId, response.Likes, !yaLeDioLike);
             
             return Ok(new { 
                 success = true, 

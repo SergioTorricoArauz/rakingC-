@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using RankingCyY.Data;
 using RankingCyY.Domain;    // ITemporadaDomainService / TemporadaDomainService
 using RankingCyY.Services;  // TemporadaSchedulerService / SchedulerOptions
+using RankingCyY.Hubs;      // HistoriaHub
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,7 +43,12 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 // ────────────────────────────────────────────────────────────────────────────────
-// 4) Scheduler y dominio de temporadas
+// 4) SignalR para tiempo real
+// ────────────────────────────────────────────────────────────────────────────────
+builder.Services.AddSignalR();
+
+// ────────────────────────────────────────────────────────────────────────────────
+// 5) Scheduler y dominio de temporadas
 // ────────────────────────────────────────────────────────────────────────────────
 // (En appsettings.json puedes sobreescribir el intervalo, por ejemplo:
 //  "Scheduler": { "IntervalMinutes": 60 })
@@ -56,7 +62,7 @@ builder.Services.AddHostedService<TemporadaSchedulerService>();
 builder.Services.AddHostedService<HistoriaCleanupService>();
 
 // ────────────────────────────────────────────────────────────────────────────────
-// 5) API Controllers & Swagger
+// 6) API Controllers & Swagger
 // ────────────────────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -65,7 +71,7 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // ────────────────────────────────────────────────────────────────────────────────
-// 6) Middleware pipeline
+// 7) Middleware pipeline
 // ────────────────────────────────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
@@ -83,5 +89,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Mapear el Hub de SignalR
+app.MapHub<HistoriaHub>("/historiahub");
 
 app.Run();
