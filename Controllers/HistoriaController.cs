@@ -115,6 +115,54 @@ namespace RankingCyY.Controllers
             }
         }
 
+        // Obtener todas las historias de todos los clientes
+        [HttpGet("all")]
+        public async Task<IActionResult> ObtenerHistorias([FromQuery] int? clienteActualId = null)
+        {
+            var ahora = DateTime.UtcNow;
+            
+            var historias = await context.Historias
+                .Include(h => h.Cliente)
+                .Include(h => h.Imagenes)
+                .Include(h => h.Comentarios)
+                    .ThenInclude(c => c.Cliente)
+                .Include(h => h.Comentarios)
+                    .ThenInclude(c => c.ComentarioLikes)
+                .OrderByDescending(h => h.FechaCreacion)
+                .Select(h => new HistoriaResponseDto
+                {
+                    Id = h.Id,
+                    ClienteId = h.ClienteId,
+                    NombreCliente = h.Cliente.Nombre,
+                    Descripcion = h.Descripcion,
+                    FechaCreacion = h.FechaCreacion,
+                    FechaExpiracion = h.FechaExpiracion,
+                    EstaActiva = h.EstaActiva,
+                    PermiteComentarios = h.PermiteComentarios,
+                    PuedeComentarAun = h.PermiteComentarios && h.FechaExpiracion > ahora,
+                    Imagenes = h.Imagenes.OrderBy(i => i.Orden).Select(i => new HistoriaImagenDto
+                    {
+                        Id = i.Id,
+                        NombreArchivo = i.NombreArchivo,
+                        Url = $"{Request.Scheme}://{Request.Host}{i.RutaArchivo}",
+                        Orden = i.Orden
+                    }).ToList(),
+                    Comentarios = h.Comentarios.OrderBy(c => c.FechaComentario).Select(c => new HistoriaComentarioDto
+                    {
+                        Id = c.Id,
+                        ClienteId = c.ClienteId,
+                        NombreCliente = c.Cliente.Nombre,
+                        Comentario = c.Comentario,
+                        FechaComentario = c.FechaComentario,
+                        Likes = c.Likes,
+                        YaLeDiLike = clienteActualId.HasValue && c.ComentarioLikes.Any(l => l.ClienteId == clienteActualId.Value)
+                    }).ToList()
+                })
+                .ToListAsync();
+            return Ok(historias);
+        }
+
+
         // Obtiene todas las historias activas
         [HttpGet("activas")]
         public async Task<IActionResult> ObtenerHistoriasActivas([FromQuery] int? clienteActualId = null)
