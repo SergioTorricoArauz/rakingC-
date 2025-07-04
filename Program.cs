@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using RankingCyY.Data;
 using RankingCyY.Domain;    // ITemporadaDomainService / TemporadaDomainService
-using RankingCyY.Services;  // TemporadaSchedulerService / SchedulerOptions
+using RankingCyY.Services;  // TemporadaSchedulerService / SchedulerOptions / PuntosService
 using RankingCyY.Hubs;      // HistoriaHub, CarritoHub
 
 var builder = WebApplication.CreateBuilder(args);
@@ -48,17 +48,14 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddSignalR();
 
 // ────────────────────────────────────────────────────────────────────────────────
-// 5) Scheduler y dominio de temporadas
+// 5) Servicios de negocio
 // ────────────────────────────────────────────────────────────────────────────────
-// (En appsettings.json puedes sobreescribir el intervalo, por ejemplo:
-//  "Scheduler": { "IntervalMinutes": 60 })
 builder.Services.Configure<SchedulerOptions>(
     builder.Configuration.GetSection("Scheduler"));
 
 builder.Services.AddScoped<ITemporadaDomainService, TemporadaDomainService>();
+builder.Services.AddScoped<IPuntosService, PuntosService>(); // ⭐ Nuevo servicio
 builder.Services.AddHostedService<TemporadaSchedulerService>();
-
-// Servicio para limpiar historias expiradas
 builder.Services.AddHostedService<HistoriaCleanupService>();
 
 // ────────────────────────────────────────────────────────────────────────────────

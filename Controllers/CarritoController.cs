@@ -5,12 +5,13 @@ using RankingCyY.Data;
 using RankingCyY.Models;
 using RankingCyY.Models.dto;
 using RankingCyY.Hubs;
+using RankingCyY.Services;
 
 namespace RankingCyY.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class CarritoController(AppDbContext context, IHubContext<CarritoHub> hubContext) : ControllerBase
+    public class CarritoController(AppDbContext context, IHubContext<CarritoHub> hubContext, IPuntosService puntosService) : ControllerBase
     {
 
         // Crea un carrito vacío para el cliente si no tiene uno ACTIVO.
@@ -191,45 +192,58 @@ namespace RankingCyY.Controllers
             if (carrito == null)
                 return NotFound("Carrito no encontrado o ya pagado.");
 
-            foreach (var articulo in carrito.Articulos)
+            using var transaction = await context.Database.BeginTransactionAsync();
+            try
             {
-                var producto = await context.Productos
-                    .Include(p => p.ProductosDescuentos)
-                    .FirstOrDefaultAsync(p => p.Id == articulo.ProductoId);
-
-                if (producto == null || !producto.EstaDisponible)
-                    return BadRequest($"El producto {articulo.Producto.Nombre} ya no está disponible.");
-
-                var descuento = producto.ProductosDescuentos
-                    .FirstOrDefault(d => d.FechaInicio <= DateTime.UtcNow && d.FechaFin >= DateTime.UtcNow);
-
-                if (descuento != null)
+                foreach (var articulo in carrito.Articulos)
                 {
-                    if (producto.CantidadComprada + articulo.Cantidad > descuento.CantidadMaximaClientes) // Usar descuento.CantidadMaximaClientes
-                        return BadRequest($"No hay suficientes cupos para el producto {producto.Nombre} con descuento.");
-                }
+                    var producto = await context.Productos
+                        .Include(p => p.ProductosDescuentos)
+                        .FirstOrDefaultAsync(p => p.Id == articulo.ProductoId);
 
-                producto.CantidadComprada += articulo.Cantidad;
+                    if (producto == null || !producto.EstaDisponible)
+                        return BadRequest($"El producto {articulo.Producto.Nombre} ya no está disponible.");
 
-                if (descuento != null)
-                {
-                    if (producto.CantidadComprada >= descuento.CantidadMaximaClientes)
+                    var descuento = producto.ProductosDescuentos
+                        .FirstOrDefault(d => d.FechaInicio <= DateTime.UtcNow && d.FechaFin >= DateTime.UtcNow);
+
+                    if (descuento != null)
+                    {
+                        if (producto.CantidadComprada + articulo.Cantidad > descuento.CantidadMaximaClientes)
+                            return BadRequest($"No hay suficientes cupos para el producto {producto.Nombre} con descuento.");
+                    }
+
+                    producto.CantidadComprada += articulo.Cantidad;
+
+                    if (descuento != null)
+                    {
+                        if (producto.CantidadComprada >= descuento.CantidadMaximaClientes)
+                            producto.EstaDisponible = false;
+                    }
+                    else if (producto.CantidadComprada >= producto.CantidadMaximaClientes)
+                    {
                         producto.EstaDisponible = false;
+                    }
                 }
-                else if (producto.CantidadComprada >= producto.CantidadMaximaClientes)
-                {
-                    producto.EstaDisponible = false;
-                }
+
+                carrito.Estado = "FINALIZADO";
+
+                await puntosService.AsignarPuntosPorCompraAsync(carrito.ClienteId, carrito.Articulos.ToList());
+
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // Notificar via SignalR
+                await hubContext.Clients.Group($"Carrito_{carrito.ClienteId}")
+                    .SendAsync("CarritoFinalizado", carritoId);
+
+                return Ok("Compra realizada con éxito.");
             }
-
-            carrito.Estado = "FINALIZADO";
-            await context.SaveChangesAsync();
-
-            // Notificar al cliente específico sobre la finalización del carrito
-            await hubContext.Clients.Group($"Carrito_{carrito.ClienteId}")
-                .SendAsync("CarritoFinalizado", carritoId);
-
-            return Ok("Compra realizada con éxito.");
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, $"Error al finalizar la compra: {ex.Message}");
+            }
         }
 
         [HttpGet("historial/{clienteId}")]
